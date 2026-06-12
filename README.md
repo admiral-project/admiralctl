@@ -1,0 +1,64 @@
+# admiralctl
+
+Command-line interface for the Admiral PaaS platform.
+
+`admiralctl` communicates with `admirald` to manage nodes, applications, instances, backups, routes, and operations.
+
+## Quick start
+
+```bash
+# Configure CLI
+admiralctl init --server https://admirald.example.com:8080 --token your-token
+
+# Check platform health
+admiralctl status
+
+# List worker nodes
+admiralctl nodes list
+
+# Manage applications
+admiralctl apps list
+admiralctl apps apply -f app.yaml
+admiralctl apps validate -f app.yaml
+admiralctl apps deactivate --name myapp
+admiralctl apps activate --name myapp
+
+# Manage instances
+admiralctl instances list
+admiralctl instances provision --app myapp --tier small --customer cust_001
+admiralctl instances pause INSTANCE_ID
+admiralctl instances resume INSTANCE_ID
+admiralctl instances deprovision INSTANCE_ID
+
+# Backup and restore
+admiralctl instances backup INSTANCE_ID --service SERVICE_NAME
+admiralctl backups list
+admiralctl backups restore --backup-id BK_ID --instance-id INST_ID --service SERVICE_NAME
+
+> **Note:** Restore requires the target instance to be in `paused` state.
+
+# Routes
+admiralctl routes list
+admiralctl routes sync
+
+# Operations
+admiralctl operations list
+admiralctl operations show OP_ID
+```
+
+## Documentation
+
+See [docs/man.md](docs/man.md) for the full command reference.
+
+## Output formats
+
+All `list` subcommands support `--output table` (default) and `--output json`.
+
+## Configuration
+
+Configuration is stored in `~/.config/admiralctl/config.yaml` and can be initialized with `admiralctl init`.
+
+Environment variables:
+- `ADMIRAL_SERVER_URL`
+- `ADMIRAL_SHARED_TOKEN`
+- `ADMIRAL_TLS_CA_FILE`
