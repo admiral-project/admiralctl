@@ -24,10 +24,18 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var Version = "dev"
+
 func main() {
 	if len(os.Args) < 2 {
 		printGeneralUsage()
 		os.Exit(1)
+	}
+
+	switch os.Args[1] {
+	case "version", "--version", "-v":
+		fmt.Printf("admiralctl %s\n", Version)
+		return
 	}
 
 	cfg, err := config.Load()
@@ -99,6 +107,7 @@ func printGeneralUsage() {
 	fmt.Println("  routes       List, show, sync, enable, or disable public routes")
 	fmt.Println("  storage      Show storage state for instances and nodes")
 	fmt.Println("  user         Manage admin users (create, list, set-password)")
+	fmt.Println("  version      Print the CLI version")
 	fmt.Println("  help         Show usage help details")
 	fmt.Println("\nUse 'admiralctl <command> -h' or 'admiralctl <command> <subcommand> -h' for specific parameters.")
 }
