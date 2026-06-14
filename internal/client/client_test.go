@@ -5,29 +5,51 @@ package client
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 )
 
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func newTestHTTPClient(handler func(*http.Request) (*http.Response, error)) *http.Client {
+	return &http.Client{Transport: roundTripperFunc(handler)}
+}
+
+func jsonResponse(status int, payload any) (*http.Response, error) {
+	var body strings.Builder
+	if payload != nil {
+		if err := json.NewEncoder(&body).Encode(payload); err != nil {
+			return nil, err
+		}
+	}
+	return &http.Response{
+		StatusCode: status,
+		Body:       io.NopCloser(strings.NewReader(body.String())),
+		Header:     make(http.Header),
+	}, nil
+}
+
 func TestRetryOnServerError(t *testing.T) {
 	failCount := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
 		failCount++
 		if failCount <= 2 {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+			return jsonResponse(http.StatusInternalServerError, nil)
 		}
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok"})
-	}))
-	defer server.Close()
+		return jsonResponse(http.StatusOK, map[string]interface{}{"status": "ok"})
+	})
 
 	c := &Client{
-		serverURL:  server.URL,
+		serverURL:  "https://example.com",
 		token:      "token",
-		http:       server.Client(),
+		http:       client,
 		maxRetries: 3,
 		retryDelay: 1 * time.Millisecond,
 	}
@@ -46,16 +68,15 @@ func TestRetryOnServerError(t *testing.T) {
 
 func TestNoRetryOnClientError(t *testing.T) {
 	attempts := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
 		attempts++
-		w.WriteHeader(http.StatusBadRequest)
-	}))
-	defer server.Close()
+		return jsonResponse(http.StatusBadRequest, nil)
+	})
 
 	c := &Client{
-		serverURL:  server.URL,
+		serverURL:  "https://example.com",
 		token:      "token",
-		http:       server.Client(),
+		http:       client,
 		maxRetries: 3,
 		retryDelay: 1 * time.Millisecond,
 	}
@@ -71,16 +92,15 @@ func TestNoRetryOnClientError(t *testing.T) {
 
 func TestRetryExhaustion(t *testing.T) {
 	attempts := 0
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
 		attempts++
-		w.WriteHeader(http.StatusServiceUnavailable)
-	}))
-	defer server.Close()
+		return jsonResponse(http.StatusServiceUnavailable, nil)
+	})
 
 	c := &Client{
-		serverURL:  server.URL,
+		serverURL:  "https://example.com",
 		token:      "token",
-		http:       server.Client(),
+		http:       client,
 		maxRetries: 2,
 		retryDelay: 1 * time.Millisecond,
 	}
@@ -108,31 +128,30 @@ func TestBackoffDuration(t *testing.T) {
 
 func TestRoutesAPI(t *testing.T) {
 	var seen []string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
 		seen = append(seen, r.Method+" "+r.URL.Path)
 		switch r.URL.Path {
 		case "/api/v1/routes":
 			switch r.Method {
 			case http.MethodGet:
-				_ = json.NewEncoder(w).Encode([]map[string]interface{}{{"hostname": "wiki123456.apps.example.com"}})
+				return jsonResponse(http.StatusOK, []map[string]interface{}{{"hostname": "wiki123456.apps.example.com"}})
 			case http.MethodPost:
-				w.WriteHeader(http.StatusOK)
+				return jsonResponse(http.StatusOK, nil)
 			default:
-				w.WriteHeader(http.StatusMethodNotAllowed)
+				return jsonResponse(http.StatusMethodNotAllowed, nil)
 			}
 		case "/api/v1/routes/wiki123456.apps.example.com":
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{"hostname": "wiki123456.apps.example.com"})
+			return jsonResponse(http.StatusOK, map[string]interface{}{"hostname": "wiki123456.apps.example.com"})
 		case "/api/v1/routes/wiki123456.apps.example.com/enable":
-			w.WriteHeader(http.StatusOK)
+			return jsonResponse(http.StatusOK, nil)
 		case "/api/v1/routes/wiki123456.apps.example.com/disable":
-			w.WriteHeader(http.StatusOK)
+			return jsonResponse(http.StatusOK, nil)
 		default:
-			w.WriteHeader(http.StatusNotFound)
+			return jsonResponse(http.StatusNotFound, nil)
 		}
-	}))
-	defer server.Close()
+	})
 
-	c := &Client{serverURL: server.URL, token: "token", http: server.Client()}
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
 
 	routes, err := c.GetRoutes()
 	if err != nil {
