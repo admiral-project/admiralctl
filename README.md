@@ -26,6 +26,8 @@ admiralctl apps activate --name myapp
 # Manage instances
 admiralctl instances list
 admiralctl instances provision --app myapp --tier small --customer cust_001
+admiralctl instances provision --app myapp --tier small --customer cust_001 --node worker-01 --logical-instance-id li_001
+admiralctl instances migrate --target-node worker-02 INSTANCE_ID
 admiralctl instances pause INSTANCE_ID
 admiralctl instances resume INSTANCE_ID
 admiralctl instances deprovision INSTANCE_ID

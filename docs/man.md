@@ -130,7 +130,17 @@ Provision a new customer application instance.
 | `--tier` | string | yes | Tier name |
 | `--customer` | string | yes | Customer ID |
 | `--node` | string | no | Explicit node ID to target |
+| `--logical-instance-id` | string | no | Preserve the logical instance identity across reprovisioning or migration |
 | `--output` | string | no | Output format: `table` or `json` |
+
+### instances migrate --target-node NODE_ID INSTANCE_ID
+
+Start an offline migration to another worker node while preserving the logical instance identity.
+
+| Flag | Type | Required | Description |
+|------|------|----------|-------------|
+| `--target-node` | string | yes | Target worker node ID |
+| `--wait` | bool | no | Wait until the migration operation reaches a terminal state |
 
 ### instances pause INSTANCE_ID
 
