@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/admiral-project/admiral/admirald/pkg/admiral"
 )
 
 type roundTripperFunc func(*http.Request) (*http.Response, error)
@@ -210,5 +212,151 @@ func TestFormatHTTPErrorRedactsUnstructuredBody(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "server returned an unstructured error response") {
 		t.Fatalf("unexpected error message: %v", err)
+	}
+}
+
+func TestGetBackupStorageConfig(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/admin/settings/backup-storage" {
+			return jsonResponse(http.StatusNotFound, nil)
+		}
+		return jsonResponse(http.StatusOK, admiral.BackupStorageConfig{
+			Backend:  "s3",
+			Bucket:    "admiral-backups",
+			Region:    "us-east-1",
+			Endpoint:  "https://s3.example.com",
+			AccessKeyEnv: "AKID123",
+		})
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+	cfg, err := c.GetBackupStorageConfig()
+	if err != nil {
+		t.Fatalf("get backup storage config: %v", err)
+	}
+	if cfg.Backend != "s3" || cfg.Bucket != "admiral-backups" {
+		t.Fatalf("unexpected config: %+v", cfg)
+	}
+}
+
+func TestSetBackupStorageConfig(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodPut || r.URL.Path != "/api/admin/settings/backup-storage" {
+			return jsonResponse(http.StatusNotFound, nil)
+		}
+		return jsonResponse(http.StatusOK, nil)
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+		err := c.SetBackupStorageConfig(admiral.BackupStorageConfig{
+		Backend:  "s3",
+		Bucket:    "admiral-backups",
+		Region:    "us-east-1",
+		Endpoint:  "https://s3.example.com",
+		AccessKeyEnv: "AKID123",
+		SecretKeyEnv: "sk-secret",
+	})
+	if err != nil {
+		t.Fatalf("set backup storage config: %v", err)
+	}
+}
+
+func TestTestBackupStorageConfig(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/admin/settings/backup-storage/test" {
+			return jsonResponse(http.StatusNotFound, nil)
+		}
+		return jsonResponse(http.StatusOK, nil)
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+	if err := c.TestBackupStorageConfig(); err != nil {
+		t.Fatalf("test backup storage config: %v", err)
+	}
+}
+
+func TestDeleteBackup(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodDelete || r.URL.Path != "/api/admin/backups/bk_001" {
+			return jsonResponse(http.StatusNotFound, nil)
+		}
+		return jsonResponse(http.StatusOK, nil)
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+	if err := c.DeleteBackup("bk_001"); err != nil {
+		t.Fatalf("delete backup: %v", err)
+	}
+}
+
+func TestDeleteBackupAccepts202(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		return jsonResponse(http.StatusAccepted, nil)
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+	if err := c.DeleteBackup("bk_001"); err != nil {
+		t.Fatalf("delete backup should accept 202: %v", err)
+	}
+}
+
+func TestDeleteBackupError(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		return jsonResponse(http.StatusNotFound, map[string]string{"error": "backup not found"})
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+	err := c.DeleteBackup("bk_001")
+	if err == nil {
+		t.Fatal("expected error for backup not found")
+	}
+}
+
+func TestPruneBackups(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/admin/backups/prune" {
+			return jsonResponse(http.StatusNotFound, nil)
+		}
+		return jsonResponse(http.StatusOK, nil)
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+	if err := c.PruneBackups(); err != nil {
+		t.Fatalf("prune backups: %v", err)
+	}
+}
+
+func TestMigrateInstance(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/admin/instances/inst_001/migrate" {
+			return jsonResponse(http.StatusNotFound, nil)
+		}
+		return jsonResponse(http.StatusAccepted, admiral.MigrateAppResponse{
+			OperationID:       "op_001",
+			InstanceID:        "inst_001",
+			LogicalInstanceID: "li_001",
+			Status:            "accepted",
+		})
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+	res, err := c.MigrateInstance("inst_001", "worker-02")
+	if err != nil {
+		t.Fatalf("migrate instance: %v", err)
+	}
+	if res.OperationID != "op_001" || res.InstanceID != "inst_001" || res.Status != "accepted" {
+		t.Fatalf("unexpected migrate response: %+v", res)
+	}
+}
+
+func TestMigrateInstanceError(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		return jsonResponse(http.StatusBadRequest, map[string]string{"error": "node not found"})
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+	_, err := c.MigrateInstance("inst_001", "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for bad migrate request")
 	}
 }
