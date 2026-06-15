@@ -253,16 +253,16 @@ func handleNodes(cli *client.Client) {
 			if pubIP == "" || pubIP == "<nil>" {
 				pubIP = "-"
 			}
-		rows = append(rows, []string{
-			fmt.Sprintf("%v", n["id"]),
-			fmt.Sprintf("%v", n["hostname"]),
-			role,
-			fmt.Sprintf("%v", n["status"]),
-			health,
-			avail,
-			wgIP,
-			pubIP,
-		})
+			rows = append(rows, []string{
+				fmt.Sprintf("%v", n["id"]),
+				fmt.Sprintf("%v", n["hostname"]),
+				role,
+				fmt.Sprintf("%v", n["status"]),
+				health,
+				avail,
+				wgIP,
+				pubIP,
+			})
 		}
 		output.PrintTable(headers, rows)
 
@@ -673,7 +673,7 @@ func handleInstances(cli *client.Client) {
 			fmt.Printf("Migration failed: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("Migration started!\nOperation ID: %s\nNew Instance ID: %s\nLogical Instance ID: %s\n",
+		fmt.Printf("Migration started!\nOperation ID: %s\nInstance ID: %s\nLogical Instance ID: %s\n",
 			res.OperationID, res.InstanceID, res.LogicalInstanceID)
 		if *waitFlag {
 			waitForOperationOrExit(cli, res.OperationID)
@@ -947,14 +947,14 @@ func handleBackups(cli *client.Client) {
 				_ = setCmd.Parse(os.Args[4:])
 
 				cfg := admiral.BackupStorageConfig{
-					Backend:       *backend,
-					Enabled:       true,
-					Endpoint:      *endpoint,
-					Region:        *region,
-					Bucket:        *bucket,
-					Prefix:        *prefix,
-					AccessKeyEnv:  *accessKeyEnv,
-					SecretKeyEnv:  *secretKeyEnv,
+					Backend:      *backend,
+					Enabled:      true,
+					Endpoint:     *endpoint,
+					Region:       *region,
+					Bucket:       *bucket,
+					Prefix:       *prefix,
+					AccessKeyEnv: *accessKeyEnv,
+					SecretKeyEnv: *secretKeyEnv,
 				}
 				if err := cli.SetBackupStorageConfig(cfg); err != nil {
 					fmt.Printf("Error: %v\n", err)

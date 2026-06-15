@@ -221,10 +221,10 @@ func TestGetBackupStorageConfig(t *testing.T) {
 			return jsonResponse(http.StatusNotFound, nil)
 		}
 		return jsonResponse(http.StatusOK, admiral.BackupStorageConfig{
-			Backend:  "s3",
-			Bucket:    "admiral-backups",
-			Region:    "us-east-1",
-			Endpoint:  "https://s3.example.com",
+			Backend:      "s3",
+			Bucket:       "admiral-backups",
+			Region:       "us-east-1",
+			Endpoint:     "https://s3.example.com",
 			AccessKeyEnv: "AKID123",
 		})
 	})
@@ -248,11 +248,11 @@ func TestSetBackupStorageConfig(t *testing.T) {
 	})
 
 	c := &Client{serverURL: "https://example.com", token: "token", http: client}
-		err := c.SetBackupStorageConfig(admiral.BackupStorageConfig{
-		Backend:  "s3",
-		Bucket:    "admiral-backups",
-		Region:    "us-east-1",
-		Endpoint:  "https://s3.example.com",
+	err := c.SetBackupStorageConfig(admiral.BackupStorageConfig{
+		Backend:      "s3",
+		Bucket:       "admiral-backups",
+		Region:       "us-east-1",
+		Endpoint:     "https://s3.example.com",
 		AccessKeyEnv: "AKID123",
 		SecretKeyEnv: "sk-secret",
 	})
