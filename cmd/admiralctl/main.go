@@ -103,7 +103,7 @@ func printGeneralUsage() {
 	fmt.Println("  instances    Manage provisioning, pausing, or deleting customer applications")
 	fmt.Println("  operations   Query states of background PaaS operations")
 	fmt.Println("  operation    Query one operation status directly")
-	fmt.Println("  backups      List, show, and restore backups")
+	fmt.Println("  backups      List, show, restore, storage config, delete, and prune backups")
 	fmt.Println("  routes       List, show, sync, enable, or disable public routes")
 	fmt.Println("  storage      Show storage state for instances and nodes")
 	fmt.Println("  user         Manage admin users (create, list, set-password)")
@@ -492,14 +492,14 @@ func handleApps(cli *client.Client) {
 
 func handleInstances(cli *client.Client) {
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: admiralctl instances <list|provision|start|stop|restart|pause|resume|reactivate|backup|deprovision|destroy|resize> [flags/args]")
+		fmt.Println("Usage: admiralctl instances <list|provision|start|stop|restart|pause|resume|reactivate|backup|deprovision|destroy|resize|migrate> [flags/args]")
 		os.Exit(1)
 	}
 
 	action := os.Args[2]
 	switch action {
 	case "help", "-h", "--help":
-		fmt.Println("Usage: admiralctl instances <list|provision|start|stop|restart|pause|resume|reactivate|backup|deprovision|destroy|resize> [flags/args]")
+		fmt.Println("Usage: admiralctl instances <list|provision|start|stop|restart|pause|resume|reactivate|backup|deprovision|destroy|resize|migrate> [flags/args]")
 		return
 	case "list":
 		listCmd := flag.NewFlagSet("instances list", flag.ExitOnError)
@@ -552,6 +552,7 @@ func handleInstances(cli *client.Client) {
 		tier := provCmd.String("tier", "", "Name of the service tier (required)")
 		cust := provCmd.String("customer", "", "Unique Customer ID (required)")
 		nodeID := provCmd.String("node", "", "Explicit node ID to target")
+		logicalInstanceID := provCmd.String("logical-instance-id", "", "Preserve logical instance identity for migration")
 		outputFlag := provCmd.String("output", "table", "Output format: table or json")
 		waitFlag := provCmd.Bool("wait", false, "Wait until the operation reaches a terminal state")
 
@@ -567,6 +568,7 @@ func handleInstances(cli *client.Client) {
 			TierName:          *tier,
 			CustomerID:        *cust,
 			NodeID:            *nodeID,
+			LogicalInstanceID: *logicalInstanceID,
 		}
 
 		res, err := cli.ProvisionApp(req)
@@ -655,6 +657,27 @@ func handleInstances(cli *client.Client) {
 			os.Exit(1)
 		}
 		fmt.Printf("Instance %s restarted (stop: %s / start: %s)\n", instID, stopOpID, startOpID)
+
+	case "migrate":
+		migrateCmd := flag.NewFlagSet("instances migrate", flag.ExitOnError)
+		targetNode := migrateCmd.String("target-node", "", "Target node ID (required)")
+		waitFlag := migrateCmd.Bool("wait", false, "Wait until migration completes")
+		_ = migrateCmd.Parse(os.Args[3:])
+		if migrateCmd.NArg() < 1 || *targetNode == "" {
+			fmt.Println("Usage: admiralctl instances migrate --target-node <node_id> <instance_id>")
+			os.Exit(1)
+		}
+		instID := migrateCmd.Arg(0)
+		res, err := cli.MigrateInstance(instID, *targetNode)
+		if err != nil {
+			fmt.Printf("Migration failed: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Migration started!\nOperation ID: %s\nNew Instance ID: %s\nLogical Instance ID: %s\n",
+			res.OperationID, res.InstanceID, res.LogicalInstanceID)
+		if *waitFlag {
+			waitForOperationOrExit(cli, res.OperationID)
+		}
 
 	case "resize":
 		resizeCmd := flag.NewFlagSet("instances resize", flag.ExitOnError)
@@ -801,14 +824,14 @@ func waitForOperationOrExit(cli *client.Client, operationID string) {
 
 func handleBackups(cli *client.Client) {
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: admiralctl backups <list|show|restore> [flags/args]")
+		fmt.Println("Usage: admiralctl backups <list|show|restore|storage|delete|prune> [flags/args]")
 		os.Exit(1)
 	}
 
 	action := os.Args[2]
 	switch action {
 	case "help", "-h", "--help":
-		fmt.Println("Usage: admiralctl backups <list|show|restore> [flags/args]")
+		fmt.Println("Usage: admiralctl backups <list|show|restore|storage|delete|prune> [flags/args]")
 		return
 	case "list":
 		listCmd := flag.NewFlagSet("backups list", flag.ExitOnError)
@@ -886,6 +909,110 @@ func handleBackups(cli *client.Client) {
 			os.Exit(1)
 		}
 		fmt.Printf("Restore queued successfully!\nOperation ID: %s\n", res.OperationID)
+
+	case "storage":
+		storageCmd := flag.NewFlagSet("backups storage", flag.ExitOnError)
+		outputFlag := storageCmd.String("output", "table", "Output format: table or json")
+		_ = storageCmd.Parse(os.Args[3:])
+
+		if storageCmd.NArg() > 0 {
+			sub := storageCmd.Arg(0)
+			switch sub {
+			case "get":
+				cfg, err := cli.GetBackupStorageConfig()
+				if err != nil {
+					fmt.Printf("Error: %v\n", err)
+					os.Exit(1)
+				}
+				if *outputFlag == "json" {
+					output.PrintJSON(cfg)
+					return
+				}
+				fmt.Printf("Backend:  %s\n", cfg.Backend)
+				fmt.Printf("Enabled:  %v\n", cfg.Enabled)
+				fmt.Printf("Endpoint: %s\n", cfg.Endpoint)
+				fmt.Printf("Region:   %s\n", cfg.Region)
+				fmt.Printf("Bucket:   %s\n", cfg.Bucket)
+				fmt.Printf("Prefix:   %s\n", cfg.Prefix)
+
+			case "set":
+				setCmd := flag.NewFlagSet("backups storage set", flag.ExitOnError)
+				backend := setCmd.String("backend", "s3", "Storage backend: s3 or local")
+				endpoint := setCmd.String("endpoint", "", "S3-compatible endpoint URL")
+				region := setCmd.String("region", "us-east-1", "S3 region")
+				bucket := setCmd.String("bucket", "", "S3 bucket name")
+				prefix := setCmd.String("prefix", "", "S3 key prefix")
+				accessKeyEnv := setCmd.String("access-key-env", "ADMIRAL_AWS_ACCESS_KEY_ID", "Env var name for access key")
+				secretKeyEnv := setCmd.String("secret-key-env", "ADMIRAL_AWS_SECRET_ACCESS_KEY", "Env var name for secret key")
+				_ = setCmd.Parse(os.Args[4:])
+
+				cfg := admiral.BackupStorageConfig{
+					Backend:       *backend,
+					Enabled:       true,
+					Endpoint:      *endpoint,
+					Region:        *region,
+					Bucket:        *bucket,
+					Prefix:        *prefix,
+					AccessKeyEnv:  *accessKeyEnv,
+					SecretKeyEnv:  *secretKeyEnv,
+				}
+				if err := cli.SetBackupStorageConfig(cfg); err != nil {
+					fmt.Printf("Error: %v\n", err)
+					os.Exit(1)
+				}
+				fmt.Println("Backup storage configuration updated.")
+
+			case "test":
+				if err := cli.TestBackupStorageConfig(); err != nil {
+					fmt.Printf("Error: %v\n", err)
+					os.Exit(1)
+				}
+				fmt.Println("Backup storage test passed.")
+
+			default:
+				fmt.Printf("Unknown storage subcommand %q. Use: get, set, test\n", sub)
+				os.Exit(1)
+			}
+			return
+		}
+		fmt.Println("Usage: admiralctl backups storage <get|set|test> [flags]")
+		fmt.Println("\nSubcommands:")
+		fmt.Println("  get          Show current backup storage configuration")
+		fmt.Println("  set          Update backup storage configuration")
+		fmt.Println("  test         Test storage connectivity")
+
+	case "delete":
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: admiralctl backups delete <backup_id>")
+			os.Exit(1)
+		}
+		backupID := os.Args[3]
+		fmt.Printf("Are you sure you want to delete backup %s? (y/N): ", backupID)
+		var confirm string
+		_, _ = fmt.Scanf("%s", &confirm)
+		if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
+			fmt.Println("Cancelled.")
+			return
+		}
+		if err := cli.DeleteBackup(backupID); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Backup %s deleted.\n", backupID)
+
+	case "prune":
+		fmt.Print("Are you sure you want to prune old succeeded backups? (y/N): ")
+		var confirm string
+		_, _ = fmt.Scanf("%s", &confirm)
+		if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
+			fmt.Println("Cancelled.")
+			return
+		}
+		if err := cli.PruneBackups(); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Backups pruned successfully.")
 
 	default:
 		fmt.Printf("Unknown action %q for backups.\n", action)

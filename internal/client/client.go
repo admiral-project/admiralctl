@@ -700,6 +700,82 @@ func (c *Client) SetPassword(username, newPassword string) error {
 	return nil
 }
 
+func (c *Client) GetBackupStorageConfig() (*admiral.BackupStorageConfig, error) {
+	resp, status, err := c.request("GET", "/api/admin/settings/backup-storage", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, formatHTTPError("get backup storage config", status, resp)
+	}
+	var cfg admiral.BackupStorageConfig
+	if err := json.Unmarshal(resp, &cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+func (c *Client) SetBackupStorageConfig(cfg admiral.BackupStorageConfig) error {
+	body, _ := json.Marshal(cfg)
+	resp, status, err := c.request("PUT", "/api/admin/settings/backup-storage", body)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return formatHTTPError("set backup storage config", status, resp)
+	}
+	return nil
+}
+
+func (c *Client) TestBackupStorageConfig() error {
+	resp, status, err := c.request("POST", "/api/admin/settings/backup-storage/test", nil)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return formatHTTPError("test backup storage config", status, resp)
+	}
+	return nil
+}
+
+func (c *Client) DeleteBackup(backupID string) error {
+	resp, status, err := c.request("DELETE", "/api/admin/backups/"+url.PathEscape(backupID), nil)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK && status != http.StatusAccepted {
+		return formatHTTPError("delete backup", status, resp)
+	}
+	return nil
+}
+
+func (c *Client) PruneBackups() error {
+	resp, status, err := c.request("POST", "/api/admin/backups/prune", nil)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return formatHTTPError("prune backups", status, resp)
+	}
+	return nil
+}
+
+func (c *Client) MigrateInstance(instanceID, targetNodeID string) (*admiral.MigrateAppResponse, error) {
+	body, _ := json.Marshal(admiral.MigrateAppRequest{TargetNodeID: targetNodeID})
+	resp, status, err := c.request("POST", "/api/admin/instances/"+url.PathEscape(instanceID)+"/migrate", body)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusAccepted {
+		return nil, formatHTTPError("migrate instance", status, resp)
+	}
+	var res admiral.MigrateAppResponse
+	if err := json.Unmarshal(resp, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
 func (c *Client) ListUsers() ([]map[string]interface{}, error) {
 	resp, status, err := c.request("GET", "/api/admin/users", nil)
 	if err != nil {
