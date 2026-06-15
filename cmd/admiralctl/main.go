@@ -230,7 +230,7 @@ func handleNodes(cli *client.Client) {
 			return
 		}
 
-		headers := []string{"NODE ID", "HOSTNAME", "STATUS", "HEALTH", "AVAILABLE", "RAM COMMIT", "DISK COMMIT"}
+		headers := []string{"NODE ID", "HOSTNAME", "ROLE", "STATUS", "HEALTH", "AVAILABLE", "WG IP", "PUBLIC IP"}
 		var rows [][]string
 		for _, n := range nodes {
 			health := fmt.Sprintf("%v", n["health_status"])
@@ -241,23 +241,28 @@ func handleNodes(cli *client.Client) {
 			if avail == "" || avail == "<nil>" {
 				avail = "-"
 			}
-			ramCommit := "-"
-			if r, ok := n["committed_ram_bytes"]; ok && fmt.Sprintf("%v", r) != "0" {
-				ramCommit = fmt.Sprintf("%v", r)
+			role := fmt.Sprintf("%v", n["node_role"])
+			if role == "" || role == "<nil>" {
+				role = "worker"
 			}
-			diskCommit := "-"
-			if d, ok := n["committed_disk_bytes"]; ok && fmt.Sprintf("%v", d) != "0" {
-				diskCommit = fmt.Sprintf("%v", d)
+			wgIP := fmt.Sprintf("%v", n["wireguard_ip"])
+			if wgIP == "" || wgIP == "<nil>" {
+				wgIP = "-"
 			}
-			rows = append(rows, []string{
-				fmt.Sprintf("%v", n["id"]),
-				fmt.Sprintf("%v", n["hostname"]),
-				fmt.Sprintf("%v", n["status"]),
-				health,
-				avail,
-				ramCommit,
-				diskCommit,
-			})
+			pubIP := fmt.Sprintf("%v", n["public_ip"])
+			if pubIP == "" || pubIP == "<nil>" {
+				pubIP = "-"
+			}
+		rows = append(rows, []string{
+			fmt.Sprintf("%v", n["id"]),
+			fmt.Sprintf("%v", n["hostname"]),
+			role,
+			fmt.Sprintf("%v", n["status"]),
+			health,
+			avail,
+			wgIP,
+			pubIP,
+		})
 		}
 		output.PrintTable(headers, rows)
 
@@ -266,6 +271,9 @@ func handleNodes(cli *client.Client) {
 		id := regCmd.String("id", "", "Unique Node ID (required)")
 		host := regCmd.String("hostname", "", "Node hostname (required)")
 		ip := regCmd.String("ip", "", "Node IP address (required)")
+		wgIP := regCmd.String("wireguard-ip", "", "WireGuard VPN IP address")
+		role := regCmd.String("role", "worker", "Node role: admin, worker, or portal")
+		publicIP := regCmd.String("public-ip", "", "Public IP address for remote connectivity")
 		osType := regCmd.String("os", "linux", "Operating System")
 		podmanV := regCmd.String("podman", "4.9.0", "Podman Version")
 
@@ -278,11 +286,14 @@ func handleNodes(cli *client.Client) {
 		}
 
 		req := admiral.RegisterNodeRequest{
-			NodeID:   *id,
-			Hostname: *host,
-			IP:       *ip,
-			OS:       *osType,
-			PodmanV:  *podmanV,
+			NodeID:      *id,
+			Hostname:    *host,
+			IP:          *ip,
+			WireguardIP: *wgIP,
+			NodeRole:    *role,
+			PublicIP:    *publicIP,
+			OS:          *osType,
+			PodmanV:     *podmanV,
 		}
 
 		err := cli.RegisterNode(req)
