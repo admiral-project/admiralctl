@@ -5,9 +5,11 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -30,7 +32,7 @@ type Client struct {
 	retryDelay time.Duration
 }
 
-type ClientOption func(*Client)
+type Option func(*Client)
 
 type ProvisionRejectedError struct {
 	Response admiral.ProvisioningRejectedResponse
@@ -55,35 +57,34 @@ func parsePolicyRejectedError(status int, resp []byte) error {
 		return nil
 	}
 	var rejected admiral.ProvisioningRejectedResponse
-	if err := json.Unmarshal(resp, &rejected); err != nil {
-		return nil
+	if err := json.Unmarshal(resp, &rejected); err == nil {
+		if rejected.Code != "" || rejected.OperationID != "" {
+			return &ProvisionRejectedError{Response: rejected}
+		}
 	}
-	if rejected.Code == "" && rejected.OperationID == "" {
-		return nil
-	}
-	return &ProvisionRejectedError{Response: rejected}
+	return nil
 }
 
-func WithTimeout(d time.Duration) ClientOption {
+func WithTimeout(d time.Duration) Option {
 	return func(c *Client) {
 		c.http.Timeout = d
 	}
 }
 
-func WithRetries(maxRetries int, baseDelay time.Duration) ClientOption {
+func WithRetries(maxRetries int, baseDelay time.Duration) Option {
 	return func(c *Client) {
 		c.maxRetries = maxRetries
 		c.retryDelay = baseDelay
 	}
 }
 
-func WithOperator(operator string) ClientOption {
+func WithOperator(operator string) Option {
 	return func(c *Client) {
 		c.operator = operator
 	}
 }
 
-func New(serverURL, token, caCertFile string, opts ...ClientOption) (*Client, error) {
+func New(serverURL, token, caCertFile string, opts ...Option) (*Client, error) {
 	if err := tlsconfig.ValidateURLScheme(serverURL, "https"); err != nil {
 		return nil, err
 	}
@@ -142,7 +143,7 @@ func (c *Client) request(method, path string, body []byte) ([]byte, int, error) 
 }
 
 func (c *Client) doRequest(method, url string, body []byte) ([]byte, int, error) {
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+	req, err := http.NewRequestWithContext(context.Background(), method, url, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -174,11 +175,13 @@ func isRetryableNetworkError(err error) bool {
 	if err == nil {
 		return false
 	}
-	if uerr, ok := err.(*url.Error); ok {
+	var nerr net.Error
+	var uerr *url.Error
+	if errors.As(err, &uerr) {
 		err = uerr.Err
 	}
-	if nerr, ok := err.(net.Error); ok {
-		return nerr.Timeout() || nerr.Temporary()
+	if errors.As(err, &nerr) {
+		return nerr.Timeout()
 	}
 	if strings.Contains(err.Error(), "connection refused") {
 		return true
@@ -193,8 +196,18 @@ func isRetryableNetworkError(err error) bool {
 }
 
 func (c *Client) backoff(attempt int) time.Duration {
-	n := 1 << uint(attempt-1)
-	base := c.retryDelay * time.Duration(n)
+	shift := attempt - 1
+	if shift < 0 {
+		shift = 0
+	}
+	if shift > 20 {
+		shift = 20
+	}
+	n := time.Duration(1)
+	for i := 0; i < shift; i++ {
+		n *= 2
+	}
+	base := c.retryDelay * n
 	jitter := time.Duration(cryptoRandFloat64() * float64(base) * 0.1)
 	return base + jitter
 }
@@ -233,7 +246,7 @@ func sanitizeErrorBody(resp []byte) string {
 	}
 
 	if len(trimmed) > 120 {
-		trimmed = trimmed[:120]
+		return "server returned an unstructured error response"
 	}
 	return "server returned an unstructured error response"
 }

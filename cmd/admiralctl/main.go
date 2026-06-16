@@ -407,8 +407,17 @@ func handleApps(cli *client.Client) {
 			os.Exit(1)
 		}
 
-		path, _ := filepath.Abs(*file)
-		data, err := os.ReadFile(path)
+		path, err := filepath.Abs(*file)
+		if err != nil {
+			fmt.Printf("Failed resolving file path %s: %v\n", *file, err)
+			os.Exit(1)
+		}
+		path, err = sanitizeInputFilePath(path)
+		if err != nil {
+			fmt.Printf("Failed validating file path %s: %v\n", *file, err)
+			os.Exit(1)
+		}
+		data, err := readInputFile(path)
 		if err != nil {
 			fmt.Printf("Failed reading file %s: %v\n", *file, err)
 			os.Exit(1)
@@ -442,8 +451,17 @@ func handleApps(cli *client.Client) {
 			os.Exit(1)
 		}
 
-		path, _ := filepath.Abs(*file)
-		data, err := os.ReadFile(path)
+		path, err := filepath.Abs(*file)
+		if err != nil {
+			fmt.Printf("Failed resolving file path %s: %v\n", *file, err)
+			os.Exit(1)
+		}
+		path, err = sanitizeInputFilePath(path)
+		if err != nil {
+			fmt.Printf("Failed validating file path %s: %v\n", *file, err)
+			os.Exit(1)
+		}
+		data, err := readInputFile(path)
 		if err != nil {
 			fmt.Printf("Failed reading file: %v\n", err)
 			os.Exit(1)
@@ -1240,7 +1258,7 @@ func readPasswordFromTerminal(fd int) (string, error) {
 
 func getTermios(fd uintptr) (*syscall.Termios, error) {
 	termios := &syscall.Termios{}
-	_, _, errno := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TCGETS), uintptr(unsafe.Pointer(termios)), 0, 0, 0)
+	_, _, errno := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TCGETS), uintptr(unsafe.Pointer(termios)), 0, 0, 0) // #nosec G103 -- terminal ioctls require unsafe syscall access
 	if errno != 0 {
 		return nil, errno
 	}
@@ -1248,11 +1266,22 @@ func getTermios(fd uintptr) (*syscall.Termios, error) {
 }
 
 func setTermios(fd uintptr, state *syscall.Termios) error {
-	_, _, errno := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TCSETS), uintptr(unsafe.Pointer(state)), 0, 0, 0)
+	_, _, errno := syscall.Syscall6(syscall.SYS_IOCTL, fd, uintptr(syscall.TCSETS), uintptr(unsafe.Pointer(state)), 0, 0, 0) // #nosec G103 -- terminal ioctls require unsafe syscall access
 	if errno != 0 {
 		return errno
 	}
 	return nil
+}
+
+func sanitizeInputFilePath(path string) (string, error) {
+	if path == "" {
+		return "", fmt.Errorf("empty file path")
+	}
+	return filepath.Clean(path), nil
+}
+
+func readInputFile(path string) ([]byte, error) {
+	return os.ReadFile(path) // #nosec G304 -- path comes from explicit user input for file-based commands
 }
 
 // --- Storage Command ---

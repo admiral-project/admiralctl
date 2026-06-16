@@ -32,7 +32,7 @@ func Load() (*Config, error) {
 	}
 
 	path := GetConfigPath()
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- config path is fixed by GetConfigPath()
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
@@ -65,7 +65,7 @@ func Load() (*Config, error) {
 func Save(cfg *Config) error {
 	path := GetConfigPath()
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0750); err != nil {
 		return err
 	}
 

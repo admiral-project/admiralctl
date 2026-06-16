@@ -40,7 +40,7 @@ func jsonResponse(status int, payload any) (*http.Response, error) {
 
 func TestRetryOnServerError(t *testing.T) {
 	failCount := 0
-	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+	client := newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
 		failCount++
 		if failCount <= 2 {
 			return jsonResponse(http.StatusInternalServerError, nil)
@@ -70,7 +70,7 @@ func TestRetryOnServerError(t *testing.T) {
 
 func TestNoRetryOnClientError(t *testing.T) {
 	attempts := 0
-	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+	client := newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
 		attempts++
 		return jsonResponse(http.StatusBadRequest, nil)
 	})
@@ -94,7 +94,7 @@ func TestNoRetryOnClientError(t *testing.T) {
 
 func TestRetryExhaustion(t *testing.T) {
 	attempts := 0
-	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+	client := newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
 		attempts++
 		return jsonResponse(http.StatusServiceUnavailable, nil)
 	})
@@ -290,7 +290,7 @@ func TestDeleteBackup(t *testing.T) {
 }
 
 func TestDeleteBackupAccepts202(t *testing.T) {
-	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+	client := newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
 		return jsonResponse(http.StatusAccepted, nil)
 	})
 
@@ -301,7 +301,7 @@ func TestDeleteBackupAccepts202(t *testing.T) {
 }
 
 func TestDeleteBackupError(t *testing.T) {
-	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+	client := newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
 		return jsonResponse(http.StatusNotFound, map[string]string{"error": "backup not found"})
 	})
 
@@ -350,7 +350,7 @@ func TestMigrateInstance(t *testing.T) {
 }
 
 func TestMigrateInstanceError(t *testing.T) {
-	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+	client := newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
 		return jsonResponse(http.StatusBadRequest, map[string]string{"error": "node not found"})
 	})
 
