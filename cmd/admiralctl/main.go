@@ -123,7 +123,7 @@ func handleInit(cfg *config.Config) {
 	_ = initCmd.Parse(os.Args[2:])
 
 	if strings.TrimSpace(*token) == "" {
-		fmt.Println("Error: --token is required. Set it explicitly or export ADMIRAL_SHARED_TOKEN.")
+		fmt.Println("Error: --token is required. Set it explicitly or export ADMIRAL_ADMIN_TOKEN.")
 		os.Exit(1)
 	}
 	if err := tlsconfig.ValidateURLScheme(*serverURL, "https"); err != nil {
@@ -174,7 +174,7 @@ func requireToken(cfg *config.Config) {
 		return
 	}
 
-	fmt.Println("Error: no authentication token configured. Run 'admiralctl init --token <token>' or set ADMIRAL_SHARED_TOKEN.")
+	fmt.Println("Error: no authentication token configured. Run 'admiralctl init --token <token>' or set ADMIRAL_ADMIN_TOKEN.")
 	os.Exit(1)
 }
 

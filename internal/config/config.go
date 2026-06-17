@@ -46,7 +46,7 @@ func Load() (*Config, error) {
 	if val := os.Getenv("ADMIRAL_SERVER_URL"); val != "" {
 		cfg.ServerURL = val
 	}
-	if val := os.Getenv("ADMIRAL_SHARED_TOKEN"); val != "" {
+	if val := os.Getenv("ADMIRAL_ADMIN_TOKEN"); val != "" {
 		cfg.Token = val
 	}
 	if val := os.Getenv("ADMIRAL_TLS_CA_FILE"); val != "" {

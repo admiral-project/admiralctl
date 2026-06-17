@@ -62,5 +62,5 @@ Configuration is stored in `~/.config/admiralctl/config.yaml` and can be initial
 
 Environment variables:
 - `ADMIRAL_SERVER_URL`
-- `ADMIRAL_SHARED_TOKEN`
+- `ADMIRAL_ADMIN_TOKEN`
 - `ADMIRAL_TLS_CA_FILE`

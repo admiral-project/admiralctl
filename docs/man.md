@@ -13,7 +13,7 @@ Initialize or update local CLI configuration.
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--server` | string | `https://localhost:8080` | admirald API endpoint |
-| `--token` | string | env `ADMIRAL_SHARED_TOKEN` | Shared authentication token |
+| `--token` | string | env `ADMIRAL_ADMIN_TOKEN` | Shared authentication token |
 | `--ca-cert` | string | env `ADMIRAL_TLS_CA_FILE` | CA certificate for TLS |
 
 ### status

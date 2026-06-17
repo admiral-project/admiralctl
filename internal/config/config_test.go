@@ -11,7 +11,7 @@ import (
 func TestLoadWithoutConfigDoesNotInjectDefaultToken(t *testing.T) {
 	setEnv(t, "HOME", t.TempDir())
 	setEnv(t, "ADMIRAL_SERVER_URL", "")
-	setEnv(t, "ADMIRAL_SHARED_TOKEN", "")
+	setEnv(t, "ADMIRAL_ADMIN_TOKEN", "")
 	setEnv(t, "ADMIRAL_TLS_CA_FILE", "")
 
 	cfg, err := Load()
@@ -29,7 +29,7 @@ func TestLoadWithoutConfigDoesNotInjectDefaultToken(t *testing.T) {
 func TestLoadAppliesEnvironmentOverrides(t *testing.T) {
 	setEnv(t, "HOME", t.TempDir())
 	setEnv(t, "ADMIRAL_SERVER_URL", "https://admiral.example.com")
-	setEnv(t, "ADMIRAL_SHARED_TOKEN", "env-token")
+	setEnv(t, "ADMIRAL_ADMIN_TOKEN", "env-token")
 	setEnv(t, "ADMIRAL_TLS_CA_FILE", "/etc/ssl/admiral-ca.pem")
 
 	cfg, err := Load()
@@ -50,7 +50,7 @@ func TestLoadAppliesEnvironmentOverrides(t *testing.T) {
 func TestLoadRejectsHTTPServerURL(t *testing.T) {
 	setEnv(t, "HOME", t.TempDir())
 	setEnv(t, "ADMIRAL_SERVER_URL", "http://localhost:8080")
-	setEnv(t, "ADMIRAL_SHARED_TOKEN", "")
+	setEnv(t, "ADMIRAL_ADMIN_TOKEN", "")
 	setEnv(t, "ADMIRAL_TLS_CA_FILE", "")
 
 	_, err := Load()
