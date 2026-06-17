@@ -276,6 +276,7 @@ func handleNodes(cli *client.Client) {
 		publicIP := regCmd.String("public-ip", "", "Public IP address for remote connectivity")
 		osType := regCmd.String("os", "linux", "Operating System")
 		podmanV := regCmd.String("podman", "4.9.0", "Podman Version")
+		token := regCmd.String("token", "", "Pre-generated node token for single-node mode")
 
 		_ = regCmd.Parse(os.Args[3:])
 
@@ -294,6 +295,7 @@ func handleNodes(cli *client.Client) {
 			PublicIP:    *publicIP,
 			OS:          *osType,
 			PodmanV:     *podmanV,
+			Token:       *token,
 		}
 
 		err := cli.RegisterNode(req)
