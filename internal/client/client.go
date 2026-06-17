@@ -559,6 +559,36 @@ func (c *Client) GetCustomerApp(instanceID string) (map[string]interface{}, erro
 	return item, nil
 }
 
+func (c *Client) TriggerInspect(instanceID string) (string, error) {
+	resp, status, err := c.request("POST", "/api/admin/instances/"+url.PathEscape(instanceID)+"/inspect", nil)
+	if err != nil {
+		return "", err
+	}
+	if status != http.StatusAccepted {
+		return "", formatHTTPError("trigger inspect", status, resp)
+	}
+	var res admiral.OperationResponse
+	if err := json.Unmarshal(resp, &res); err != nil {
+		return "", err
+	}
+	return res.OperationID, nil
+}
+
+func (c *Client) GetInspectResult(instanceID string) (map[string]interface{}, error) {
+	resp, status, err := c.request("GET", "/api/admin/instances/"+url.PathEscape(instanceID)+"/inspect", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, formatHTTPError("fetch inspect result", status, resp)
+	}
+	var data map[string]interface{}
+	if err := json.Unmarshal(resp, &data); err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
 func (c *Client) RestoreBackup(req admiral.RestoreBackupRequest) (*admiral.RestoreBackupResponse, error) {
 	body, _ := json.Marshal(req)
 	resp, status, err := c.request("POST", "/api/v1/backups/restore", body)

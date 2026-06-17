@@ -510,14 +510,14 @@ func handleApps(cli *client.Client) {
 
 func handleInstances(cli *client.Client) {
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: admiralctl instances <list|show|provision|start|stop|restart|pause|resume|reactivate|backup|deprovision|destroy|resize|migrate> [flags/args]")
+		fmt.Println("Usage: admiralctl instances <list|show|inspect|provision|start|stop|restart|pause|resume|reactivate|backup|deprovision|destroy|resize|migrate> [flags/args]")
 		os.Exit(1)
 	}
 
 	action := os.Args[2]
 	switch action {
 	case "help", "-h", "--help":
-		fmt.Println("Usage: admiralctl instances <list|show|provision|start|stop|restart|pause|resume|reactivate|backup|deprovision|destroy|resize|migrate> [flags/args]")
+		fmt.Println("Usage: admiralctl instances <list|show|inspect|provision|start|stop|restart|pause|resume|reactivate|backup|deprovision|destroy|resize|migrate> [flags/args]")
 		return
 	case "show":
 		if len(os.Args) < 4 {
@@ -530,6 +530,27 @@ func handleInstances(cli *client.Client) {
 			os.Exit(1)
 		}
 		output.PrintJSON(instance)
+
+	case "inspect":
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: admiralctl instances inspect <instance_id>")
+			os.Exit(1)
+		}
+		if len(os.Args) >= 5 && os.Args[4] == "--result" {
+			result, err := cli.GetInspectResult(os.Args[3])
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				os.Exit(1)
+			}
+			output.PrintJSON(result)
+		} else {
+			opID, err := cli.TriggerInspect(os.Args[3])
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Inspect task queued: operation_id=%s\n", opID)
+		}
 
 	case "list":
 		listCmd := flag.NewFlagSet("instances list", flag.ExitOnError)
