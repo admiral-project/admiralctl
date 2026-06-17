@@ -5,6 +5,9 @@ package main
 
 import (
 	"bufio"
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -119,8 +122,20 @@ func handleInit(cfg *config.Config) {
 	serverURL := initCmd.String("server", cfg.ServerURL, "Control plane server endpoint URL")
 	token := initCmd.String("token", cfg.Token, "Shared secret authentication token")
 	caCert := initCmd.String("ca-cert", cfg.CACertFile, "CA certificate file for admirald HTTPS validation")
+	genSigningKey := initCmd.Bool("generate-signing-key", false, "Generate Ed25519 signing key pair for task verification")
 
 	_ = initCmd.Parse(os.Args[2:])
+
+	if *genSigningKey {
+		pub, priv, err := ed25519.GenerateKey(rand.Reader)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating signing key: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("private_key:" + hex.EncodeToString(priv.Seed()))
+		fmt.Println("public_key:" + hex.EncodeToString(pub))
+		return
+	}
 
 	if strings.TrimSpace(*token) == "" {
 		fmt.Println("Error: --token is required. Set it explicitly or export ADMIRAL_ADMIN_TOKEN.")
