@@ -510,15 +510,27 @@ func handleApps(cli *client.Client) {
 
 func handleInstances(cli *client.Client) {
 	if len(os.Args) < 3 {
-		fmt.Println("Usage: admiralctl instances <list|provision|start|stop|restart|pause|resume|reactivate|backup|deprovision|destroy|resize|migrate> [flags/args]")
+		fmt.Println("Usage: admiralctl instances <list|show|provision|start|stop|restart|pause|resume|reactivate|backup|deprovision|destroy|resize|migrate> [flags/args]")
 		os.Exit(1)
 	}
 
 	action := os.Args[2]
 	switch action {
 	case "help", "-h", "--help":
-		fmt.Println("Usage: admiralctl instances <list|provision|start|stop|restart|pause|resume|reactivate|backup|deprovision|destroy|resize|migrate> [flags/args]")
+		fmt.Println("Usage: admiralctl instances <list|show|provision|start|stop|restart|pause|resume|reactivate|backup|deprovision|destroy|resize|migrate> [flags/args]")
 		return
+	case "show":
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: admiralctl instances show <instance_id>")
+			os.Exit(1)
+		}
+		instance, err := cli.GetCustomerApp(os.Args[3])
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		output.PrintJSON(instance)
+
 	case "list":
 		listCmd := flag.NewFlagSet("instances list", flag.ExitOnError)
 		outputFlag := listCmd.String("output", "table", "Output format: table or json")
