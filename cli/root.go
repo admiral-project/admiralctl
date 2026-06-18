@@ -40,6 +40,15 @@ func init() {
 
 	rootCmd.Version = version.Version
 	rootCmd.SetVersionTemplate("admiralctl {{.Version}}\n")
+
+	rootCmd.AddCommand(&cobra.Command{
+		Use:   "version",
+		Short: "Print the CLI version",
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, _ []string) {
+			cmd.Print(rootCmd.VersionTemplate())
+		},
+	})
 }
 
 // Execute runs the root command.
