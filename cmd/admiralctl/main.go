@@ -663,6 +663,7 @@ func handleInstances(cli *client.Client) {
 		logicalInstanceID := provCmd.String("logical-instance-id", "", "Preserve logical instance identity for migration")
 		outputFlag := provCmd.String("output", "table", "Output format: table or json")
 		waitFlag := provCmd.Bool("wait", false, "Wait until the operation reaches a terminal state")
+		quietFlag := provCmd.Bool("quiet", false, "Suppress credential output")
 
 		_ = provCmd.Parse(os.Args[3:])
 
@@ -700,11 +701,12 @@ func handleInstances(cli *client.Client) {
 		}
 
 		fmt.Printf("Provisioning queued successfully!\nOperation ID: %s\nRun 'admiralctl operations show %s' to monitor status.\n", res.OperationID, res.OperationID)
-		if len(res.Credentials) > 0 {
+		if !*quietFlag && len(res.Credentials) > 0 {
 			fmt.Println("Initial credentials:")
 			for _, cred := range res.Credentials {
 				fmt.Printf("  %s.%s: %s\n", cred.Service, cred.Name, cred.Value)
 			}
+			fmt.Println("Warning: save these credentials securely. They are displayed only once.")
 		}
 		if *waitFlag {
 			waitForOperationOrExit(cli, res.OperationID)
