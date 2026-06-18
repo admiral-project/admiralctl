@@ -148,4 +148,3 @@ func sanitizeInputFilePath(path string) (string, error) {
 func readInputFile(path string) ([]byte, error) {
 	return os.ReadFile(path) // #nosec G304 -- path comes from explicit user input for file-based commands
 }
-
