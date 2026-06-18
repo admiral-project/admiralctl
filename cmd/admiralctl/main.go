@@ -184,6 +184,19 @@ func printPolicyRejected(err *client.ProvisionRejectedError) {
 	}
 }
 
+func confirmDestructive(action, target string) bool {
+	for i := 0; i < len(os.Args); i++ {
+		if os.Args[i] == "--force" || os.Args[i] == "-f" {
+			os.Args = append(os.Args[:i], os.Args[i+1:]...)
+			return true
+		}
+	}
+	fmt.Printf("Are you sure you want to %s %s? (y/N): ", action, target)
+	var confirm string
+	_, _ = fmt.Scanf("%s", &confirm)
+	return strings.ToLower(strings.TrimSpace(confirm)) == "y"
+}
+
 func requireToken(cfg *config.Config) {
 	if strings.TrimSpace(cfg.Token) != "" {
 		return
@@ -349,6 +362,10 @@ func handleNodes(cli *client.Client) {
 			fmt.Println("Usage: admiralctl nodes disable <node_id>")
 			os.Exit(1)
 		}
+		if !confirmDestructive("disable", fmt.Sprintf("node %q", os.Args[3])) {
+			fmt.Println("Cancelled.")
+			return
+		}
 		if err := cli.DisableNode(os.Args[3]); err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -510,6 +527,10 @@ func handleApps(cli *client.Client) {
 		targetStatus := "active"
 		if action == "deactivate" {
 			targetStatus = "inactive"
+		}
+		if action == "deactivate" && !confirmDestructive("deactivate", fmt.Sprintf("app definition %q", *name)) {
+			fmt.Println("Cancelled.")
+			return
 		}
 		if err := cli.UpdateAppStatus(*name, targetStatus); err != nil {
 			fmt.Printf("Update app status failed: %v\n", err)
@@ -680,6 +701,12 @@ func handleInstances(cli *client.Client) {
 			os.Exit(1)
 		}
 		instID := actionCmd.Arg(0)
+		if action != "resume" && action != "reactivate" && action != "start" && action != "backup" {
+			if !confirmDestructive(action, fmt.Sprintf("instance %q", instID)) {
+				fmt.Println("Cancelled.")
+				return
+			}
+		}
 		apiAction := action
 		if action == "destroy" {
 			apiAction = "deprovision"
@@ -714,6 +741,10 @@ func handleInstances(cli *client.Client) {
 			os.Exit(1)
 		}
 		instID := os.Args[3]
+		if !confirmDestructive("restart", fmt.Sprintf("instance %q", instID)) {
+			fmt.Println("Cancelled.")
+			return
+		}
 		stopOpID, err := cli.TriggerAction(instID, "stop")
 		if err != nil {
 			fmt.Printf("Restart stop phase failed: %v\n", err)
@@ -736,6 +767,10 @@ func handleInstances(cli *client.Client) {
 			os.Exit(1)
 		}
 		instID := migrateCmd.Arg(0)
+		if !confirmDestructive("migrate", fmt.Sprintf("instance %q to node %q", instID, *targetNode)) {
+			fmt.Println("Cancelled.")
+			return
+		}
 		res, err := cli.MigrateInstance(instID, *targetNode)
 		if err != nil {
 			fmt.Printf("Migration failed: %v\n", err)
@@ -757,6 +792,10 @@ func handleInstances(cli *client.Client) {
 			os.Exit(1)
 		}
 		instID := resizeCmd.Arg(0)
+		if !confirmDestructive("resize", fmt.Sprintf("instance %q to tier %q", instID, *tier)) {
+			fmt.Println("Cancelled.")
+			return
+		}
 		opID, err := cli.TriggerActionWithTier(instID, "resize", *tier)
 		if err != nil {
 			var rejected *client.ProvisionRejectedError
@@ -1163,6 +1202,10 @@ func handleRoutes(cli *client.Client) {
 		if action == "enable" {
 			err = cli.EnableRoute(hostname)
 		} else {
+			if !confirmDestructive("disable", fmt.Sprintf("route %q", hostname)) {
+				fmt.Println("Cancelled.")
+				return
+			}
 			err = cli.DisableRoute(hostname)
 		}
 		if err != nil {
