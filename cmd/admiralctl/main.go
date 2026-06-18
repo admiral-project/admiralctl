@@ -117,10 +117,28 @@ func printGeneralUsage() {
 
 // --- Init Command ---
 
+func resolveToken(tokenFlag, cfgToken string) string {
+	if tokenFlag != "" {
+		fmt.Fprintln(os.Stderr, "Warning: --token exposes the secret in the process list. Prefer ADMIRAL_ADMIN_TOKEN env var.")
+		return tokenFlag
+	}
+	if cfgToken != "" {
+		return cfgToken
+	}
+	fmt.Print("Enter admin token: ")
+	t, err := readPassword()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "\nFailed to read token: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println()
+	return strings.TrimSpace(t)
+}
+
 func handleInit(cfg *config.Config) {
 	initCmd := flag.NewFlagSet("init", flag.ExitOnError)
 	serverURL := initCmd.String("server", cfg.ServerURL, "Control plane server endpoint URL")
-	token := initCmd.String("token", cfg.Token, "Shared secret authentication token")
+	token := initCmd.String("token", "", "Authentication token (visible in process list; prefer ADMIRAL_ADMIN_TOKEN)")
 	caCert := initCmd.String("ca-cert", cfg.CACertFile, "CA certificate file for admirald HTTPS validation")
 	genSigningKey := initCmd.Bool("generate-signing-key", false, "Generate Ed25519 signing key pair for task verification")
 
@@ -137,8 +155,9 @@ func handleInit(cfg *config.Config) {
 		return
 	}
 
-	if strings.TrimSpace(*token) == "" {
-		fmt.Println("Error: --token is required. Set it explicitly or export ADMIRAL_ADMIN_TOKEN.")
+	resolved := resolveToken(*token, cfg.Token)
+	if resolved == "" {
+		fmt.Println("Error: authentication token is required. Use --token or export ADMIRAL_ADMIN_TOKEN.")
 		os.Exit(1)
 	}
 	if err := tlsconfig.ValidateURLScheme(*serverURL, "https"); err != nil {
@@ -147,7 +166,7 @@ func handleInit(cfg *config.Config) {
 	}
 
 	cfg.ServerURL = *serverURL
-	cfg.Token = *token
+	cfg.Token = resolved
 	cfg.CACertFile = *caCert
 
 	err := config.Save(cfg)
