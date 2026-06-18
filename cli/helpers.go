@@ -36,6 +36,26 @@ func requireToken() {
 	}
 }
 
+// resolveToken returns the token to use, preferring an explicit flag, then the
+// configured token, then prompting the user interactively.
+func resolveToken(cmd *cobra.Command, tokenFlag, cfgToken string) string {
+	if tokenFlag != "" {
+		fmt.Fprintln(cmd.ErrOrStderr(), "Warning: --token exposes the secret in the process list. Prefer ADMIRAL_ADMIN_TOKEN env var.")
+		return tokenFlag
+	}
+	if cfgToken != "" {
+		return cfgToken
+	}
+	fmt.Fprint(cmd.OutOrStdout(), "Enter admin token: ")
+	t, err := readPassword()
+	if err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "\nFailed to read token: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Fprintln(cmd.OutOrStdout())
+	return strings.TrimSpace(t)
+}
+
 // printPolicyRejected renders a rejected provisioning response in human-readable form.
 func printPolicyRejected(resp admiral.ProvisioningRejectedResponse) {
 	fmt.Printf("Action blocked by policy.\nCode: %s\nMessage: %s\n", resp.Code, resp.Message)
