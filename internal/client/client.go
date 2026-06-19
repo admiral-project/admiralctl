@@ -311,6 +311,25 @@ func (c *Client) GetNode(id string) (map[string]interface{}, error) {
 	return node, nil
 }
 
+func (c *Client) RemoveNode(id string) error {
+	resp, status, err := c.request("DELETE", "/api/v1/nodes/"+url.PathEscape(id), nil)
+	if err != nil {
+		return err
+	}
+	if status == http.StatusConflict {
+		var body map[string]interface{}
+		if json.Unmarshal(resp, &body) == nil {
+			if msg, ok := body["error"].(string); ok {
+				return fmt.Errorf("%s", msg)
+			}
+		}
+	}
+	if status != http.StatusOK {
+		return formatHTTPError("remove node", status, resp)
+	}
+	return nil
+}
+
 func (c *Client) EnableNode(id string) error {
 	resp, status, err := c.request("POST", "/api/v1/nodes/"+url.PathEscape(id)+"/enable", nil)
 	if err != nil {

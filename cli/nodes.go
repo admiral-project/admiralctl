@@ -5,6 +5,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/admiral-project/admiral/admiralctl/internal/output"
 	"github.com/admiral-project/admiral/admirald/pkg/admiral"
@@ -23,6 +24,7 @@ func init() {
 	nodesCmd.AddCommand(nodesShowCmd)
 	nodesCmd.AddCommand(nodesEnableCmd)
 	nodesCmd.AddCommand(nodesDisableCmd)
+	nodesCmd.AddCommand(nodesRemoveCmd)
 }
 
 var nodesListCmd = &cobra.Command{
@@ -51,6 +53,18 @@ var nodesEnableCmd = &cobra.Command{
 	RunE:  runNodesEnable,
 }
 
+var nodesRemoveCmd = &cobra.Command{
+	Use:   "remove <node_id>",
+	Short: "Remove a registered node",
+	Long: `Remove a node from the platform.
+
+This removes the node record, its routes, backups, and customer apps
+from the database. The operation will be refused if the node has
+active instances, unless --force is used.`,
+	Args: cobra.ExactArgs(1),
+	RunE: runNodesRemove,
+}
+
 var nodesDisableCmd = &cobra.Command{
 	Use:   "disable <node_id>",
 	Short: "Disable a worker node",
@@ -76,6 +90,7 @@ func init() {
 
 	nodesEnableCmd.Flags().Bool("force", false, "Skip confirmation prompt")
 	nodesDisableCmd.Flags().Bool("force", false, "Skip confirmation prompt")
+	nodesRemoveCmd.Flags().Bool("force", false, "Skip confirmation prompt and remove even with active instances")
 }
 
 func runNodesList(cmd *cobra.Command, _ []string) error {
@@ -172,6 +187,25 @@ func runNodesEnable(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "Node %q enabled.\n", args[0])
+	return nil
+}
+
+func runNodesRemove(cmd *cobra.Command, args []string) error {
+	if !confirmDestructive(cmd, "remove", fmt.Sprintf("node %q", args[0])) {
+		fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+		return nil
+	}
+	force, _ := cmd.Flags().GetBool("force")
+	if err := clientOrNil().RemoveNode(args[0]); err != nil {
+		if force {
+			return err
+		}
+		if strings.Contains(err.Error(), "has active instance") {
+			cmd.PrintErrln("Tip: use --force to remove the node and all associated resources.")
+		}
+		return err
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "Node %q removed.\n", args[0])
 	return nil
 }
 

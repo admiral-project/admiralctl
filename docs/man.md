@@ -56,6 +56,18 @@ Activate a node for provisioning.
 
 Deactivate a node.
 
+### nodes remove NODE_ID
+
+Remove a registered node from the platform.
+
+This removes the node record, its routes, backups, and customer apps
+from the database. The operation is refused if the node has active
+instances unless `--force` is used.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--force` | bool | `false` | Remove even with active instances |
+
 ### apps list
 
 List registered application definitions.
