@@ -1,0 +1,136 @@
+.TH ADMIRALCTL 1 "June 2026" "Admiral" "Admiral CLI"
+.SH NAME
+admiralctl \- command-line interface for the Admiral control plane
+.SH SYNOPSIS
+.B admiralctl
+[\fICOMMAND\fR] [\fISUBCOMMAND\fR] [\fIOPTIONS\fR]
+.SH DESCRIPTION
+.B admiralctl
+is the official command-line interface for Admiral.
+It communicates with
+.B admirald
+and provides operator workflows for initialization, diagnostics,
+node management, application catalog management, instance lifecycle,
+backups, routes, operations, users, and storage reporting.
+.SH CONFIGURATION
+The packaged default configuration is installed at:
+.TP
+.I /etc/admiralctl/config.yaml
+The user configuration normally used by the CLI is:
+.TP
+.I ~/.config/admiralctl/config.yaml
+.SH COMMON COMMANDS
+.SS init
+Initialize or update local CLI configuration.
+.TP
+\fB--server\fR \fIURL\fR
+admirald API endpoint.
+.TP
+\fB--token\fR \fITOKEN\fR
+Administrative authentication token.
+.TP
+\fB--ca-cert\fR \fIPATH\fR
+CA certificate for TLS verification.
+.SS status
+Check admirald health.
+.TP
+\fB--output\fR \fItable|json\fR
+Select output format.
+.SS nodes
+Manage registered worker or portal nodes.
+.TP
+.B nodes list
+List registered nodes.
+.TP
+.B nodes show \fINODE_ID\fR
+Show details for one node.
+.TP
+.B nodes register
+Register a node.
+.TP
+.B nodes enable \fINODE_ID\fR
+Enable a node for provisioning.
+.TP
+.B nodes disable \fINODE_ID\fR
+Disable a node.
+.TP
+.B nodes remove \fINODE_ID\fR
+Remove a node. Use
+.B --force
+to remove even with active instances.
+.SS apps
+Manage application definitions.
+.TP
+.B apps list
+List registered application definitions.
+.TP
+.B apps show \fIAPP_NAME\fR
+Show one application definition.
+.TP
+.B apps apply -f \fIFILE\fR
+Create or update an application definition from YAML.
+.TP
+.B apps validate -f \fIFILE\fR
+Validate an application definition locally.
+.TP
+.B apps activate --name \fINAME\fR
+Mark a definition as provisionable.
+.TP
+.B apps deactivate --name \fINAME\fR
+Mark a definition as non-provisionable.
+.SS instances
+Manage customer application instances.
+.TP
+.B instances list
+List instances.
+.TP
+.B instances show \fIINSTANCE_ID\fR
+Show instance details.
+.TP
+.B instances inspect \fIINSTANCE_ID\fR
+Inspect containers and volumes of a running instance.
+.TP
+.B instances provision
+Provision a new instance.
+.TP
+.B instances migrate --target-node \fINODE_ID\fR \fIINSTANCE_ID\fR
+Start an offline migration preserving logical identity.
+.TP
+.B instances pause|resume|start|stop|restart \fIINSTANCE_ID\fR
+Change runtime state of an instance.
+.TP
+.B instances backup --service \fISERVICE\fR \fIINSTANCE_ID\fR
+Trigger a backup for one service.
+.TP
+.B instances deprovision \fIINSTANCE_ID\fR
+Delete an instance.
+.TP
+.B instances destroy \fIINSTANCE_ID\fR
+Alias for deprovision.
+.TP
+.B instances resize --tier \fITIER_NAME\fR \fIINSTANCE_ID\fR
+Change the tier assigned to an instance.
+.SS operations
+Inspect or retry platform operations.
+.SS backups
+List, inspect, and restore backups.
+.SS routes
+List, inspect, enable, disable, or synchronize public routes.
+.SS user
+Manage administrative users.
+.SS storage
+Report storage usage for instances and nodes.
+.SS help
+Print general usage information.
+.SH FILES
+.TP
+.I /etc/admiralctl/config.yaml
+Packaged default configuration.
+.TP
+.I ~/.config/admiralctl/config.yaml
+User configuration.
+.SH SEE ALSO
+.BR admirald (8)
+.br
+.I admiralctl/docs/man.md
+in the source tree for the fuller command reference.
