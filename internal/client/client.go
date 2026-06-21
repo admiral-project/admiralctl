@@ -352,6 +352,21 @@ func (c *Client) DisableNode(id string) error {
 	return nil
 }
 
+func (c *Client) NodeReady(id string) (map[string]interface{}, error) {
+	resp, status, err := c.request("GET", "/api/v1/nodes/"+url.PathEscape(id)+"/ready", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, formatHTTPError("check node ready", status, resp)
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 func (c *Client) ApplyApp(yamlContent string) (string, error) {
 	body, _ := json.Marshal(map[string]string{"yaml": yamlContent})
 	resp, status, err := c.request("POST", "/api/v1/apps", body)

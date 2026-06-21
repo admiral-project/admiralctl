@@ -5,6 +5,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/admiral-project/admiral/admiralctl/internal/output"
@@ -25,6 +26,7 @@ func init() {
 	nodesCmd.AddCommand(nodesEnableCmd)
 	nodesCmd.AddCommand(nodesDisableCmd)
 	nodesCmd.AddCommand(nodesRemoveCmd)
+	nodesCmd.AddCommand(nodesReadyCmd)
 }
 
 var nodesListCmd = &cobra.Command{
@@ -72,6 +74,15 @@ var nodesDisableCmd = &cobra.Command{
 	RunE:  runNodesDisable,
 }
 
+var nodesReadyCmd = &cobra.Command{
+	Use:   "ready",
+	Short: "Check if a worker node is ready and reachable",
+	Long: `Check the reachability and readiness of a registered worker node.
+
+The node agent must respond to the readiness probe to be considered ready.`,
+	RunE: runNodesReady,
+}
+
 func init() {
 	nodesListCmd.Flags().String("output", "table", "Output format: table or json")
 
@@ -91,6 +102,9 @@ func init() {
 	nodesEnableCmd.Flags().Bool("force", false, "Skip confirmation prompt")
 	nodesDisableCmd.Flags().Bool("force", false, "Skip confirmation prompt")
 	nodesRemoveCmd.Flags().Bool("force", false, "Skip confirmation prompt and remove even with active instances")
+
+	nodesReadyCmd.Flags().String("node", "", "Node ID (required)")
+	_ = nodesReadyCmd.MarkFlagRequired("node")
 }
 
 func runNodesList(cmd *cobra.Command, _ []string) error {
@@ -218,5 +232,24 @@ func runNodesDisable(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "Node %q disabled.\n", args[0])
+	return nil
+}
+
+func runNodesReady(cmd *cobra.Command, _ []string) error {
+	nodeID, _ := cmd.Flags().GetString("node")
+
+	result, err := clientOrNil().NodeReady(nodeID)
+	if err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "✗ node %s unreachable: %s\n", nodeID, err.Error())
+		os.Exit(1)
+	}
+
+	role := fmt.Sprintf("%v", result["role"])
+	if role == "" || role == "<nil>" {
+		role = "worker"
+	}
+
+	fmt.Fprintf(cmd.OutOrStdout(), "✓ node %s (%s) ready\n", nodeID, role)
+	output.PrintJSON(result)
 	return nil
 }
