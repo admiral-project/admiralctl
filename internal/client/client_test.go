@@ -14,6 +14,73 @@ import (
 	"github.com/admiral-project/admiral/admirald/pkg/admiral"
 )
 
+func TestProvisionRejectedErrorFormatting(t *testing.T) {
+	err := (&ProvisionRejectedError{Response: admiral.ProvisioningRejectedResponse{
+		Message:     "blocked by policy",
+		OperationID: "op_123",
+	}}).Error()
+
+	if err != "blocked by policy (operation_id=op_123)" {
+		t.Fatalf("unexpected error string %q", err)
+	}
+}
+
+func TestProvisionRejectedErrorFallbacks(t *testing.T) {
+	tests := []struct {
+		name string
+		resp admiral.ProvisioningRejectedResponse
+		want string
+	}{
+		{
+			name: "uses error field",
+			resp: admiral.ProvisioningRejectedResponse{Error: "temporary block"},
+			want: "temporary block",
+		},
+		{
+			name: "uses generic fallback",
+			resp: admiral.ProvisioningRejectedResponse{},
+			want: "provisioning rejected by policy",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := (&ProvisionRejectedError{Response: tt.resp}).Error(); got != tt.want {
+				t.Fatalf("unexpected error string %q want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParsePolicyRejectedError(t *testing.T) {
+	body := []byte(`{"code":"no_capacity","message":"No nodes available","operation_id":"op_456"}`)
+	err := parsePolicyRejectedError(http.StatusServiceUnavailable, body)
+	if err == nil {
+		t.Fatal("expected rejected error")
+	}
+
+	rejected, ok := err.(*ProvisionRejectedError)
+	if !ok {
+		t.Fatalf("expected ProvisionRejectedError, got %T", err)
+	}
+	if rejected.Response.Code != "no_capacity" || rejected.Response.OperationID != "op_456" {
+		t.Fatalf("unexpected rejected response %+v", rejected.Response)
+	}
+}
+
+func TestParsePolicyRejectedErrorIgnoresOtherStatuses(t *testing.T) {
+	if err := parsePolicyRejectedError(http.StatusBadRequest, []byte(`{"code":"x"}`)); err != nil {
+		t.Fatalf("expected nil for non-503 status, got %v", err)
+	}
+}
+
+func TestSanitizeErrorBodyUsesMessageField(t *testing.T) {
+	got := sanitizeErrorBody([]byte(`{"message":"human readable failure"}`))
+	if got != "human readable failure" {
+		t.Fatalf("unexpected sanitized body %q", got)
+	}
+}
+
 type roundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
