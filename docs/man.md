@@ -4,17 +4,27 @@
 
 `admiralctl <command> [subcommand] [flags]`
 
+## GLOBAL OPTIONS
+
+| Flag | Type | Description |
+|------|------|-------------|
+| `--server` | string | Control plane server endpoint URL |
+| `--token` | string | Authentication token (prefer `ADMIRAL_ADMIN_TOKEN` env var) |
+| `--ca-cert` | string | CA certificate file for TLS validation |
+| `--operator` | string | Operator name for audit logs |
+
 ## COMMANDS
 
 ### init
 
 Initialize or update local CLI configuration.
 
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--server` | string | `https://localhost:8080` | admirald API endpoint |
-| `--token` | string | env `ADMIRAL_ADMIN_TOKEN` | Shared authentication token |
-| `--ca-cert` | string | env `ADMIRAL_TLS_CA_FILE` | CA certificate for TLS |
+| Flag | Type | Description |
+|------|------|-------------|
+| `--server` | string | admirald API endpoint |
+| `--token` | string | Shared authentication token |
+| `--ca-cert` | string | CA certificate for TLS |
+| `--generate-signing-key` | bool | Generate Ed25519 signing key pair |
 
 ### status
 
@@ -45,28 +55,44 @@ Register a new worker node.
 | `--id` | string | yes | Unique node ID |
 | `--hostname` | string | yes | Node hostname |
 | `--ip` | string | yes | Node IP address |
-| `--os` | string | no | Operating system (default: linux) |
-| `--podman` | string | no | Podman version (default: 4.9.0) |
+| `--wireguard-ip` | string | no | WireGuard VPN IP address |
+| `--role` | string | no | Node role: `worker`, `admin`, `portal` |
+| `--public-ip` | string | no | Public IP address |
+| `--os` | string | no | Operating system (default: `linux`) |
+| `--podman` | string | no | Podman version (default: `4.9.0`) |
+| `--token` | string | no | Pre-generated node token |
 
 ### nodes enable NODE_ID
 
 Activate a node for provisioning.
 
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--force` | bool | `false` | Skip confirmation prompt |
+
 ### nodes disable NODE_ID
 
 Deactivate a node.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--force` | bool | `false` | Skip confirmation prompt |
 
 ### nodes remove NODE_ID
 
 Remove a registered node from the platform.
 
-This removes the node record, its routes, backups, and customer apps
-from the database. The operation is refused if the node has active
-instances unless `--force` is used.
-
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--force` | bool | `false` | Remove even with active instances |
+
+### nodes ready
+
+Check if a worker node is ready and reachable.
+
+| Flag | Type | Required | Description |
+|------|------|----------|-------------|
+| `--node` | string | yes | Node ID |
 
 ### apps list
 
@@ -86,7 +112,7 @@ Register or update an application definition from a YAML file.
 
 | Flag | Type | Required | Description |
 |------|------|----------|-------------|
-| `-f` | string | yes | Path to YAML file |
+| `-f`, `--file` | string | yes | Path to YAML file |
 
 ### apps validate
 
@@ -94,7 +120,7 @@ Validate an application definition YAML file locally.
 
 | Flag | Type | Required | Description |
 |------|------|----------|-------------|
-| `-f` | string | yes | Path to YAML file |
+| `-f`, `--file` | string | yes | Path to YAML file |
 
 ### apps activate
 
@@ -111,6 +137,7 @@ Mark an application definition as non-provisionable.
 | Flag | Type | Required | Description |
 |------|------|----------|-------------|
 | `--name` | string | yes | Application definition name |
+| `--force` | bool | no | Skip confirmation prompt |
 
 ### instances list
 
@@ -124,13 +151,13 @@ List customer application instances.
 
 Show details of a specific instance.
 
-| Flag | Type | Default | Description |
-|------|------|---------|-------------|
-| `--output` | string | `table` | Output format: `table` or `json` |
-
 ### instances inspect INSTANCE_ID
 
 Inspect containers and volumes of a running instance.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--result` | bool | `false` | Show the last result instead of triggering a new inspect |
 
 ### instances provision
 
@@ -142,65 +169,67 @@ Provision a new customer application instance.
 | `--tier` | string | yes | Tier name |
 | `--customer` | string | yes | Customer ID |
 | `--node` | string | no | Explicit node ID to target |
-| `--logical-instance-id` | string | no | Preserve the logical instance identity across reprovisioning or migration |
+| `--logical-instance-id` | string | no | Preserve the logical instance identity |
 | `--output` | string | no | Output format: `table` or `json` |
+| `--wait` | bool | no | Wait until the operation reaches a terminal state |
+| `--quiet` | bool | no | Suppress credential output |
 
-### instances migrate --target-node NODE_ID INSTANCE_ID
+### instances migrate INSTANCE_ID
 
-Start an offline migration to another worker node while preserving the logical instance identity.
+Start an offline migration to another worker node.
 
 | Flag | Type | Required | Description |
 |------|------|----------|-------------|
 | `--target-node` | string | yes | Target worker node ID |
-| `--wait` | bool | no | Wait until the migration operation reaches a terminal state |
+| `--wait` | bool | no | Wait until the migration operation completes |
 
-### instances pause INSTANCE_ID
+### instances pause|resume|reactivate|start|stop INSTANCE_ID
 
-Pause a running instance.
+Change runtime state of an instance.
 
-### instances resume INSTANCE_ID
-
-Resume a paused instance.
-
-### instances start INSTANCE_ID
-
-Start a stopped instance.
-
-### instances stop INSTANCE_ID
-
-Stop a running instance.
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--wait` | bool | `false` | Wait until the operation reaches a terminal state |
+| `--force` | bool | `false` | Skip confirmation prompt (for stop) |
 
 ### instances restart INSTANCE_ID
 
 Restart an instance (stop then start).
 
-### instances backup --service SERVICE_NAME INSTANCE_ID
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--force` | bool | `false` | Skip confirmation prompt |
+
+### instances backup INSTANCE_ID
 
 Trigger a backup for a specific service.
-
-Flags must appear before the instance ID.
 
 | Flag | Type | Required | Description |
 |------|------|----------|-------------|
 | `--service` | string | yes | Service name declared in the app definition |
+| `--wait` | bool | no | Wait until the operation reaches a terminal state |
 
 ### instances deprovision INSTANCE_ID
 
 Deprovision (delete) an instance.
 
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--wait` | bool | `false` | Wait until the operation reaches a terminal state |
+| `--force` | bool | `false` | Skip confirmation prompt |
+
 ### instances destroy INSTANCE_ID
 
 Alias for deprovision.
 
-### instances resize --tier TIER_NAME INSTANCE_ID
+### instances resize INSTANCE_ID
 
 Change the tier of an instance.
 
 | Flag | Type | Required | Description |
 |------|------|----------|-------------|
 | `--tier` | string | yes | Target tier name |
-
-If the target tier would exceed the assigned node capacity policy, the action is rejected before dispatch and the CLI prints the policy rejection details.
+| `--wait` | bool | no | Wait until the operation reaches a terminal state |
 
 ### operations list
 
@@ -234,9 +263,6 @@ Show details of a specific backup.
 
 Restore a backup to an instance.
 
-> **Precondition:** The target instance must be in `paused` or `stopped` state.
-> Restore is rejected with `HTTP 409` if the instance is `running`.
-
 | Flag | Type | Required | Description |
 |------|------|----------|-------------|
 | `--backup-id` | string | yes | Backup ID |
@@ -245,7 +271,37 @@ Restore a backup to an instance.
 | `--target-node` | string | no | Target node ID |
 | `--source-type` | string | no | Source type override |
 | `--source-uri` | string | no | Source URI override |
-| `--verify-checksum` | bool | no | Verify checksum (default: true) |
+| `--verify-checksum` | bool | no | Verify checksum (default: `true`) |
+
+### backups storage get
+
+Show current backup storage configuration.
+
+### backups storage set
+
+Update backup storage configuration.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--backend` | string | `s3` | Storage backend: `s3` or `local` |
+| `--endpoint` | string | | S3-compatible endpoint URL |
+| `--region` | string | `us-east-1` | S3 region |
+| `--bucket` | string | | S3 bucket name |
+| `--prefix` | string | | S3 key prefix |
+| `--access-key-env` | string | `ADMIRAL_AWS_ACCESS_KEY_ID` | Env var name for access key |
+| `--secret-key-env` | string | `ADMIRAL_AWS_SECRET_ACCESS_KEY` | Env var name for secret key |
+
+### backups storage test
+
+Test storage connectivity.
+
+### backups delete BACKUP_ID
+
+Delete a backup.
+
+### backups prune
+
+Prune old succeeded backups.
 
 ### routes list
 
@@ -271,13 +327,17 @@ Enable a route.
 
 Disable a route.
 
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--force` | bool | `false` | Skip confirmation prompt |
+
 ### user create
 
 Create a new administrative user.
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--type` | string | `admin` | Role: superadmin, admin, platform, support, audit |
+| `--type` | string | `admin` | Role: `superadmin`, `admin`, `platform`, `support`, `audit` |
 
 The password is read interactively from stdin.
 
@@ -311,6 +371,14 @@ List per-node storage and resource usage.
 |------|------|---------|-------------|
 | `--output` | string | `table` | Output format: `table` or `json` |
 
+### version
+
+Print the CLI version.
+
 ### help
 
 Print general usage information.
+
+## SEE ALSO
+
+* [admiralctl-admin(8)](admiralctl-admin.8) — Administration workflows and examples.
