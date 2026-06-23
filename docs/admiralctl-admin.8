@@ -1,0 +1,83 @@
+.TH ADMIRALCTL-ADMIN 8 "June 2026" "Admiral" "Admiral Administration"
+.SH NAME
+admiralctl-admin \- administration workflows for the Admiral PaaS
+.SH DESCRIPTION
+This manual describes common administrative tasks and workflows using
+.B admiralctl
+to manage the Admiral control plane and worker nodes.
+.SH WORKFLOWS
+.SS Initial Setup
+After installing the
+.B admirald
+control plane, initialize the CLI:
+.IP
+.B admiralctl init --server https://admiral.example.com --token $ADMIRAL_ADMIN_TOKEN
+.IP
+Verify the connection:
+.IP
+.B admiralctl status
+.SS Scaling Infrastructure
+To add a new worker node to the cluster:
+.IP
+1. Provision a Linux server with Podman installed.
+.IP
+2. Register the node in the control plane:
+.IP
+.B admiralctl nodes register --id worker-02 --hostname worker-02.local --ip 192.168.1.12 --role worker
+.IP
+3. Enable the node to start accepting workloads:
+.IP
+.B admiralctl nodes enable worker-02
+.IP
+4. Check node health:
+.IP
+.B admiralctl nodes ready --node worker-02
+.SS Application Management
+Registering a new application template:
+.IP
+.B admiralctl apps apply -f wordpress-template.yaml
+.IP
+Activate it for customers:
+.IP
+.B admiralctl apps activate --name wordpress
+.SS Instance Lifecycle
+Provisioning a new instance for a customer:
+.IP
+.B admiralctl instances provision --app wordpress --tier pro --customer cust-123 --wait
+.IP
+If a node needs maintenance, migrate the instance:
+.IP
+.B admiralctl instances migrate --target-node worker-03 inst-abc-123 --wait
+.SS Disaster Recovery
+Configure backup storage (S3 example):
+.IP
+.B admiralctl backups storage set --backend s3 --bucket admiral-backups --endpoint https://s3.example.com
+.IP
+.B admiralctl backups storage test
+.IP
+Trigger a manual backup:
+.IP
+.B admiralctl instances backup --service mysql inst-abc-123
+.IP
+Restore an instance from a backup:
+.IP
+.B admiralctl instances stop inst-abc-123
+.IP
+.B admiralctl backups restore --backup-id bkp-789 --instance-id inst-abc-123 --service mysql
+.IP
+.B admiralctl instances start inst-abc-123
+.SS Auditing and Reporting
+Check for instances exceeding storage limits:
+.IP
+.B admiralctl storage instances --output json | jq '.[] | select(.storage_exceeded == true)'
+.IP
+List recent platform operations:
+.IP
+.B admiralctl operations list
+.SS User Management
+Create a new support operator:
+.IP
+.B admiralctl user create support-jane --type support
+.SH SEE ALSO
+.BR admiralctl (1),
+.BR admirald (8)

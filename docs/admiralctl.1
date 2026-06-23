@@ -12,6 +12,19 @@ It communicates with
 and provides operator workflows for initialization, diagnostics,
 node management, application catalog management, instance lifecycle,
 backups, routes, operations, users, and storage reporting.
+.SH OPTIONS
+.TP
+\fB--server\fR \fIURL\fR
+Control plane server endpoint URL.
+.TP
+\fB--token\fR \fITOKEN\fR
+Authentication token (visible in process list; prefer ADMIRAL_ADMIN_TOKEN).
+.TP
+\fB--ca-cert\fR \fIPATH\fR
+CA certificate file for admirald HTTPS validation.
+.TP
+\fB--operator\fR \fINAME\fR
+Operator name for audit logs.
 .SH CONFIGURATION
 The packaged default configuration is installed at:
 .TP
@@ -31,6 +44,9 @@ Administrative authentication token.
 .TP
 \fB--ca-cert\fR \fIPATH\fR
 CA certificate for TLS verification.
+.TP
+\fB--generate-signing-key\fR
+Generate Ed25519 signing key pair for task verification.
 .SS status
 Check admirald health.
 .TP
@@ -40,29 +56,34 @@ Select output format.
 Manage registered worker or portal nodes.
 .TP
 .B nodes list
-List registered nodes.
+List registered nodes. Supports \fB--output\fR.
 .TP
 .B nodes show \fINODE_ID\fR
 Show details for one node.
 .TP
 .B nodes register
 Register a node.
+Requires \fB--id\fR, \fB--hostname\fR, \fB--ip\fR.
+Optional: \fB--wireguard-ip\fR, \fB--role\fR, \fB--public-ip\fR, \fB--os\fR, \fB--podman\fR, \fB--token\fR.
 .TP
 .B nodes enable \fINODE_ID\fR
-Enable a node for provisioning.
+Enable a node for provisioning. Use \fB--force\fR to skip confirmation.
 .TP
 .B nodes disable \fINODE_ID\fR
-Disable a node.
+Disable a node. Use \fB--force\fR to skip confirmation.
 .TP
 .B nodes remove \fINODE_ID\fR
 Remove a node. Use
 .B --force
-to remove even with active instances.
+to skip confirmation and remove even with active instances.
+.TP
+.B nodes ready --node \fINODE_ID\fR
+Check if a worker node is ready and reachable.
 .SS apps
 Manage application definitions.
 .TP
 .B apps list
-List registered application definitions.
+List registered application definitions. Supports \fB--output\fR.
 .TP
 .B apps show \fIAPP_NAME\fR
 Show one application definition.
@@ -77,49 +98,122 @@ Validate an application definition locally.
 Mark a definition as provisionable.
 .TP
 .B apps deactivate --name \fINAME\fR
-Mark a definition as non-provisionable.
+Mark a definition as non-provisionable. Use \fB--force\fR to skip confirmation.
 .SS instances
 Manage customer application instances.
 .TP
 .B instances list
-List instances.
+List instances. Supports \fB--output\fR.
 .TP
 .B instances show \fIINSTANCE_ID\fR
 Show instance details.
 .TP
 .B instances inspect \fIINSTANCE_ID\fR
-Inspect containers and volumes of a running instance.
+Inspect containers and volumes of a running instance. Use \fB--result\fR to show the last result.
 .TP
 .B instances provision
 Provision a new instance.
+Requires \fB--app\fR, \fB--tier\fR, \fB--customer\fR.
+Optional: \fB--node\fR, \fB--logical-instance-id\fR, \fB--output\fR, \fB--wait\fR, \fB--quiet\fR.
 .TP
 .B instances migrate --target-node \fINODE_ID\fR \fIINSTANCE_ID\fR
-Start an offline migration preserving logical identity.
+Start an offline migration. Optional: \fB--wait\fR.
 .TP
-.B instances pause|resume|start|stop|restart \fIINSTANCE_ID\fR
-Change runtime state of an instance.
+.B instances pause|resume|reactivate|start|stop \fIINSTANCE_ID\fR
+Change runtime state of an instance. Optional: \fB--wait\fR, \fB--force\fR.
+.TP
+.B instances restart \fIINSTANCE_ID\fR
+Restart an instance. Optional: \fB--force\fR.
 .TP
 .B instances backup --service \fISERVICE\fR \fIINSTANCE_ID\fR
-Trigger a backup for one service.
+Trigger a backup for one service. Optional: \fB--wait\fR.
 .TP
 .B instances deprovision \fIINSTANCE_ID\fR
-Delete an instance.
+Delete an instance. Optional: \fB--wait\fR, \fB--force\fR.
 .TP
 .B instances destroy \fIINSTANCE_ID\fR
 Alias for deprovision.
 .TP
 .B instances resize --tier \fITIER_NAME\fR \fIINSTANCE_ID\fR
-Change the tier assigned to an instance.
+Change the tier assigned to an instance. Optional: \fB--wait\fR.
 .SS operations
 Inspect or retry platform operations.
+.TP
+.B operations list
+List operations. Supports \fB--output\fR.
+.TP
+.B operations show \fIOPERATION_ID\fR
+Show details for a specific operation.
+.TP
+.B operations retry \fIOPERATION_ID\fR
+Retry a failed operation.
 .SS backups
 List, inspect, and restore backups.
+.TP
+.B backups list
+List backups. Supports \fB--output\fR.
+.TP
+.B backups show \fIBACKUP_ID\fR
+Show details for a specific backup.
+.TP
+.B backups restore
+Restore a backup.
+Requires \fB--backup-id\fR, \fB--instance-id\fR, \fB--service\fR.
+Optional: \fB--target-node\fR, \fB--source-type\fR, \fB--source-uri\fR, \fB--verify-checksum\fR.
+.TP
+.B backups storage get
+Show backup storage configuration. Supports \fB--output\fR.
+.TP
+.B backups storage set
+Update backup storage configuration.
+Options: \fB--backend\fR, \fB--endpoint\fR, \fB--region\fR, \fB--bucket\fR, \fB--prefix\fR, \fB--access-key-env\fR, \fB--secret-key-env\fR.
+.TP
+.B backups storage test
+Test storage connectivity.
+.TP
+.B backups delete \fIBACKUP_ID\fR
+Delete a backup.
+.TP
+.B backups prune
+Prune old succeeded backups.
 .SS routes
 List, inspect, enable, disable, or synchronize public routes.
+.TP
+.B routes list
+List public routes. Supports \fB--output\fR.
+.TP
+.B routes show \fIHOSTNAME\fR
+Show details for a specific route.
+.TP
+.B routes sync
+Synchronize routes with the control plane.
+.TP
+.B routes enable \fIHOSTNAME\fR
+Enable a public route.
+.TP
+.B routes disable \fIHOSTNAME\fR
+Disable a public route. Optional: \fB--force\fR.
 .SS user
 Manage administrative users.
+.TP
+.B user list
+List admin users. Supports \fB--output\fR.
+.TP
+.B user create \fIUSERNAME\fR
+Create a new admin user. Optional: \fB--type\fR.
+.TP
+.B user set-password \fIUSERNAME\fR
+Set a new password for an admin user.
 .SS storage
 Report storage usage for instances and nodes.
+.TP
+.B storage instances
+Show storage state for instances. Supports \fB--output\fR.
+.TP
+.B storage nodes
+Show storage state for nodes. Supports \fB--output\fR.
+.SS version
+Print the CLI version.
 .SS help
 Print general usage information.
 .SH FILES
@@ -130,6 +224,7 @@ Packaged default configuration.
 .I ~/.config/admiralctl/config.yaml
 User configuration.
 .SH SEE ALSO
+.BR admiralctl-admin (8),
 .BR admirald (8)
 .br
 .I admiralctl/docs/man.md
