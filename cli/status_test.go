@@ -23,8 +23,8 @@ func TestStatus(t *testing.T) {
 	SetClient(client.NewWithHTTP(ts.URL, "token", ts.Client()))
 
 	buf := new(bytes.Buffer)
-	statusCmd.SetOut(buf)
 	output.SetOut(buf)
+	statusCmd.SetOut(buf)
 
 	if err := runStatus(statusCmd, nil); err != nil {
 		t.Fatalf("runStatus: %v", err)

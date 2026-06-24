@@ -24,6 +24,7 @@ func TestBackupsList(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	output.SetOut(buf)
+	backupsListCmd.SetOut(buf)
 
 	if err := runBackupsList(backupsListCmd, nil); err != nil {
 		t.Fatalf("runBackupsList: %v", err)

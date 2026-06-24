@@ -24,6 +24,7 @@ func TestOperationsList(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	output.SetOut(buf)
+	operationsListCmd.SetOut(buf)
 
 	if err := runOperationsList(operationsListCmd, nil); err != nil {
 		t.Fatalf("runOperationsList: %v", err)

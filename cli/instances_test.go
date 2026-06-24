@@ -24,6 +24,7 @@ func TestInstancesList(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	output.SetOut(buf)
+	instancesListCmd.SetOut(buf)
 
 	if err := runInstancesList(instancesListCmd, nil); err != nil {
 		t.Fatalf("runInstancesList: %v", err)

@@ -24,6 +24,7 @@ func TestNodesList(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	output.SetOut(buf)
+	nodesListCmd.SetOut(buf)
 
 	if err := runNodesList(nodesListCmd, nil); err != nil {
 		t.Fatalf("runNodesList: %v", err)
@@ -45,6 +46,7 @@ func TestNodesShow(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	output.SetOut(buf)
+	nodesShowCmd.SetOut(buf)
 
 	if err := runNodesShow(nodesShowCmd, []string{"node1"}); err != nil {
 		t.Fatalf("runNodesShow: %v", err)

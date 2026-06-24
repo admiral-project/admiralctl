@@ -86,7 +86,7 @@ func TestSave(t *testing.T) {
 
 	cfg := &Config{
 		ServerURL: "https://admiral.test",
-		Token: "test-token",
+		Token:     "test-token",
 	}
 
 	if err := Save(cfg); err != nil {

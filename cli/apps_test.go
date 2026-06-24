@@ -7,8 +7,8 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
-	"testing"
 	"os"
+	"testing"
 
 	"github.com/admiral-project/admiral/admiralctl/internal/client"
 	"github.com/admiral-project/admiral/admiralctl/internal/output"
@@ -70,6 +70,7 @@ func TestAppsActivate(t *testing.T) {
 	SetClient(client.NewWithHTTP(ts.URL, "token", ts.Client()))
 
 	buf := new(bytes.Buffer)
+	output.SetOut(buf)
 	appsActivateCmd.SetOut(buf)
 	appsActivateCmd.Flags().Set("name", "myapp")
 

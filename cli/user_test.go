@@ -24,6 +24,7 @@ func TestUserList(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	output.SetOut(buf)
+	userListCmd.SetOut(buf)
 
 	if err := runUserList(userListCmd, nil); err != nil {
 		t.Fatalf("runUserList: %v", err)

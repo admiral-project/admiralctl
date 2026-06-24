@@ -870,9 +870,9 @@ func (c *Client) ListUsers() ([]map[string]interface{}, error) {
 
 func NewWithHTTP(serverURL, token string, httpClient *http.Client) *Client {
 	return &Client{
-		serverURL: serverURL,
-		token:     token,
-		http:      httpClient,
+		serverURL:  serverURL,
+		token:      token,
+		http:       httpClient,
 		maxRetries: 3,
 		retryDelay: 1 * time.Millisecond,
 	}

@@ -24,6 +24,7 @@ func TestStorageInstances(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	output.SetOut(buf)
+	storageInstancesCmd.SetOut(buf)
 
 	if err := runStorageInstances(storageInstancesCmd, nil); err != nil {
 		t.Fatalf("runStorageInstances: %v", err)
@@ -45,6 +46,7 @@ func TestStorageNodes(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	output.SetOut(buf)
+	storageNodesCmd.SetOut(buf)
 
 	if err := runStorageNodes(storageNodesCmd, nil); err != nil {
 		t.Fatalf("runStorageNodes: %v", err)

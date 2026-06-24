@@ -24,6 +24,7 @@ func TestRoutesList(t *testing.T) {
 
 	buf := new(bytes.Buffer)
 	output.SetOut(buf)
+	routesListCmd.SetOut(buf)
 
 	if err := runRoutesList(routesListCmd, nil); err != nil {
 		t.Fatalf("runRoutesList: %v", err)
