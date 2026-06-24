@@ -104,6 +104,11 @@ func skipClientLoad(cmd *cobra.Command) bool {
 	}
 }
 
+// SetClient sets the API client to use. This is used for testing.
+func SetClient(c *client.Client) {
+	currentClient = c
+}
+
 // clientOrNil returns the current API client. It panics if called before
 // loadClient has run successfully. This should never happen because Cobra
 // runs PersistentPreRunE before any command's RunE.

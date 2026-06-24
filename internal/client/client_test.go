@@ -5,8 +5,10 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -425,5 +427,326 @@ func TestMigrateInstanceError(t *testing.T) {
 	_, err := c.MigrateInstance("inst_001", "nonexistent")
 	if err == nil {
 		t.Fatal("expected error for bad migrate request")
+	}
+}
+
+func TestNodeManagement(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		switch r.URL.Path {
+		case "/api/v1/nodes":
+			if r.Method == http.MethodPost {
+				return jsonResponse(http.StatusOK, nil)
+			}
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"id": "node1"}})
+		case "/api/v1/nodes/node1":
+			if r.Method == http.MethodGet {
+				return jsonResponse(http.StatusOK, map[string]interface{}{"id": "node1"})
+			}
+			return jsonResponse(http.StatusOK, nil)
+		case "/api/v1/nodes/node1/enable", "/api/v1/nodes/node1/disable":
+			return jsonResponse(http.StatusOK, nil)
+		case "/api/v1/nodes/node1/ready":
+			return jsonResponse(http.StatusOK, map[string]interface{}{"ready": true})
+		}
+		return jsonResponse(http.StatusNotFound, nil)
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+
+	if err := c.RegisterNode(admiral.RegisterNodeRequest{NodeID: "node1"}); err != nil {
+		t.Errorf("RegisterNode: %v", err)
+	}
+	if _, err := c.GetNodes(); err != nil {
+		t.Errorf("GetNodes: %v", err)
+	}
+	if _, err := c.GetNode("node1"); err != nil {
+		t.Errorf("GetNode: %v", err)
+	}
+	if err := c.EnableNode("node1"); err != nil {
+		t.Errorf("EnableNode: %v", err)
+	}
+	if err := c.DisableNode("node1"); err != nil {
+		t.Errorf("DisableNode: %v", err)
+	}
+	if _, err := c.NodeReady("node1"); err != nil {
+		t.Errorf("NodeReady: %v", err)
+	}
+	if err := c.RemoveNode("node1"); err != nil {
+		t.Errorf("RemoveNode: %v", err)
+	}
+}
+
+func TestAppAndInstanceManagement(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path == "/api/v1/apps" {
+			if r.Method == http.MethodPost {
+				return jsonResponse(http.StatusOK, map[string]interface{}{"name": "myapp"})
+			}
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"name": "myapp"}})
+		}
+		if r.URL.Path == "/api/v1/apps/myapp" {
+			return jsonResponse(http.StatusOK, map[string]interface{}{"name": "myapp"})
+		}
+		if r.URL.Path == "/api/v1/apps/myapp/status" {
+			return jsonResponse(http.StatusOK, nil)
+		}
+		if r.URL.Path == "/api/v1/customer-apps" {
+			if r.Method == http.MethodPost {
+				return jsonResponse(http.StatusAccepted, admiral.ProvisionResponse{OperationID: "op1"})
+			}
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"id": "inst1"}})
+		}
+		if r.URL.Path == "/api/v1/customer-apps/action" {
+			return jsonResponse(http.StatusAccepted, admiral.OperationResponse{OperationID: "op1"})
+		}
+		if r.URL.Path == "/api/v1/customer-apps/inst1" {
+			return jsonResponse(http.StatusOK, map[string]interface{}{"id": "inst1"})
+		}
+		if r.URL.Path == "/api/admin/instances/inst1/inspect" {
+			if r.Method == http.MethodPost {
+				return jsonResponse(http.StatusAccepted, admiral.OperationResponse{OperationID: "op1"})
+			}
+			return jsonResponse(http.StatusOK, map[string]interface{}{"result": "ok"})
+		}
+		if r.URL.Path == "/api/admin/instances/inst1/migrate" {
+			return jsonResponse(http.StatusAccepted, admiral.MigrateAppResponse{OperationID: "op1"})
+		}
+		return jsonResponse(http.StatusNotFound, nil)
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+
+	if _, err := c.ApplyApp("yaml"); err != nil {
+		t.Errorf("ApplyApp: %v", err)
+	}
+	if _, err := c.GetApps(); err != nil {
+		t.Errorf("GetApps: %v", err)
+	}
+	if _, err := c.GetApp("myapp"); err != nil {
+		t.Errorf("GetApp: %v", err)
+	}
+	if err := c.UpdateAppStatus("myapp", "active"); err != nil {
+		t.Errorf("UpdateAppStatus: %v", err)
+	}
+	if _, err := c.ProvisionApp(admiral.ProvisionRequest{}); err != nil {
+		t.Errorf("ProvisionApp: %v", err)
+	}
+	if _, err := c.TriggerAction("inst1", "restart"); err != nil {
+		t.Errorf("TriggerAction: %v", err)
+	}
+	if _, err := c.TriggerActionWithService("inst1", "backup", "db"); err != nil {
+		t.Errorf("TriggerActionWithService: %v", err)
+	}
+	if _, err := c.TriggerActionWithTier("inst1", "resize", "large"); err != nil {
+		t.Errorf("TriggerActionWithTier: %v", err)
+	}
+	if _, err := c.GetCustomerApps(); err != nil {
+		t.Errorf("GetCustomerApps: %v", err)
+	}
+	if _, err := c.GetCustomerApp("inst1"); err != nil {
+		t.Errorf("GetCustomerApp: %v", err)
+	}
+	if _, err := c.TriggerInspect("inst1"); err != nil {
+		t.Errorf("TriggerInspect: %v", err)
+	}
+	if _, err := c.GetInspectResult("inst1"); err != nil {
+		t.Errorf("GetInspectResult: %v", err)
+	}
+	if _, err := c.MigrateInstance("inst1", "node2"); err != nil {
+		t.Errorf("MigrateInstance: %v", err)
+	}
+}
+
+func TestOperationAndBackupManagement(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path == "/api/v1/operations" {
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"status": "succeeded"}})
+		}
+		if strings.HasPrefix(r.URL.Path, "/api/v1/operations/") && strings.HasSuffix(r.URL.Path, "/retry") {
+			return jsonResponse(http.StatusOK, map[string]interface{}{"id": "op1"})
+		}
+		if r.URL.Path == "/api/v1/backups/restore" {
+			return jsonResponse(http.StatusAccepted, admiral.RestoreBackupResponse{OperationID: "op1"})
+		}
+		if r.URL.Path == "/api/v1/backups" {
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"id": "bk1"}})
+		}
+		if r.URL.Path == "/api/v1/backups/bk1" {
+			return jsonResponse(http.StatusOK, map[string]interface{}{"id": "bk1"})
+		}
+		if r.URL.Path == "/api/admin/backups/bk1" {
+			return jsonResponse(http.StatusOK, nil)
+		}
+		if r.URL.Path == "/api/admin/backups/prune" {
+			return jsonResponse(http.StatusOK, nil)
+		}
+		return jsonResponse(http.StatusNotFound, nil)
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+
+	if _, err := c.GetOperations(); err != nil {
+		t.Errorf("GetOperations: %v", err)
+	}
+	// GetOperation uses query param
+	// WaitForOperation uses GetOperation
+	if _, err := c.RetryOperation("op1"); err != nil {
+		t.Errorf("RetryOperation: %v", err)
+	}
+	if _, err := c.RestoreBackup(admiral.RestoreBackupRequest{}); err != nil {
+		t.Errorf("RestoreBackup: %v", err)
+	}
+	if _, err := c.GetBackups(); err != nil {
+		t.Errorf("GetBackups: %v", err)
+	}
+	if _, err := c.GetBackup("bk1"); err != nil {
+		t.Errorf("GetBackup: %v", err)
+	}
+	if err := c.PruneBackups(); err != nil {
+		t.Errorf("PruneBackups: %v", err)
+	}
+}
+
+func TestUserAndRouteManagement(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path == "/api/admin/users" {
+			if r.Method == http.MethodPost {
+				return jsonResponse(http.StatusCreated, map[string]interface{}{"username": "user1"})
+			}
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"username": "user1"}})
+		}
+		if strings.HasSuffix(r.URL.Path, "/set-password") {
+			return jsonResponse(http.StatusOK, nil)
+		}
+		return jsonResponse(http.StatusNotFound, nil)
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+
+	if _, err := c.CreateUser("user1", "pass", "admin"); err != nil {
+		t.Errorf("CreateUser: %v", err)
+	}
+	if err := c.SetPassword("user1", "newpass"); err != nil {
+		t.Errorf("SetPassword: %v", err)
+	}
+	if _, err := c.ListUsers(); err != nil {
+		t.Errorf("ListUsers: %v", err)
+	}
+}
+
+func TestClientOptionsAndNew(t *testing.T) {
+	c, err := New("https://localhost:8080", "token", "",
+		WithTimeout(10*time.Second),
+		WithRetries(5, 500*time.Millisecond),
+		WithOperator("jules"),
+	)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if c.serverURL != "https://localhost:8080" {
+		t.Errorf("expected server URL, got %q", c.serverURL)
+	}
+	if c.maxRetries != 5 {
+		t.Errorf("expected maxRetries 5, got %d", c.maxRetries)
+	}
+	if c.operator != "jules" {
+		t.Errorf("expected operator jules, got %q", c.operator)
+	}
+
+	_, err = New("http://localhost:8080", "token", "")
+	if err == nil {
+		t.Error("expected error for http URL")
+	}
+}
+
+func TestNetworkErrorRetryable(t *testing.T) {
+	tests := []struct {
+		err  error
+		want bool
+	}{
+		{err: nil, want: false},
+		{err: errors.New("generic"), want: false},
+		{err: errors.New("connection refused"), want: true},
+		{err: errors.New("no such host"), want: true},
+		{err: errors.New("TLS handshake"), want: true},
+		{err: &url.Error{Err: errors.New("connection refused")}, want: true},
+	}
+
+	for _, tt := range tests {
+		if got := isRetryableNetworkError(tt.err); got != tt.want {
+			t.Errorf("isRetryableNetworkError(%v) = %v, want %v", tt.err, got, tt.want)
+		}
+	}
+}
+
+func TestGetOperationAndWait(t *testing.T) {
+	attempts := 0
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Path == "/api/v1/operations" {
+			attempts++
+			status := "running"
+			if attempts >= 2 {
+				status = "succeeded"
+			}
+			return jsonResponse(http.StatusOK, map[string]interface{}{"status": status})
+		}
+		return jsonResponse(http.StatusNotFound, nil)
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+
+	op, err := c.GetOperation("op1")
+	if err != nil {
+		t.Fatalf("GetOperation: %v", err)
+	}
+	if op["status"] != "running" {
+		t.Errorf("expected status running, got %v", op["status"])
+	}
+
+	op, err = c.WaitForOperation("op1", 1*time.Millisecond)
+	if err != nil {
+		t.Fatalf("WaitForOperation: %v", err)
+	}
+	if op["status"] != "succeeded" {
+		t.Errorf("expected status succeeded, got %v", op["status"])
+	}
+}
+
+func TestSanitizeErrorBody(t *testing.T) {
+	tests := []struct {
+		name string
+		resp []byte
+		want string
+	}{
+		{name: "empty", resp: []byte(""), want: ""},
+		{name: "structured error", resp: []byte(`{"error":"fail"}`), want: "fail"},
+		{name: "structured message", resp: []byte(`{"message":"fail"}`), want: "fail"},
+		{name: "unstructured short", resp: []byte("short error"), want: "server returned an unstructured error response"},
+		{name: "unstructured long", resp: []byte(strings.Repeat("a", 150)), want: "server returned an unstructured error response"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sanitizeErrorBody(tt.resp); got != tt.want {
+				t.Errorf("sanitizeErrorBody() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetBackupsPaged(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		return jsonResponse(http.StatusOK, pagedBackupResponse{
+			Items: []map[string]interface{}{{"id": "bk2"}},
+		})
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+	backups, err := c.GetBackups()
+	if err != nil {
+		t.Fatalf("GetBackups: %v", err)
+	}
+	if len(backups) != 1 || backups[0]["id"] != "bk2" {
+		t.Errorf("unexpected backups: %+v", backups)
 	}
 }

@@ -6,21 +6,28 @@ package output
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"text/tabwriter"
 )
 
+var defaultOut io.Writer = os.Stdout
+
+func SetOut(w io.Writer) {
+	defaultOut = w
+}
+
 func PrintJSON(data interface{}) {
 	bytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		fmt.Printf("Error formatting JSON: %v\n", err)
+		fmt.Fprintf(defaultOut, "Error formatting JSON: %v\n", err)
 		return
 	}
-	fmt.Println(string(bytes))
+	fmt.Fprintln(defaultOut, string(bytes))
 }
 
 func PrintTable(headers []string, rows [][]string) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	w := tabwriter.NewWriter(defaultOut, 0, 0, 3, ' ', 0)
 
 	// Print headers
 	for i, h := range headers {

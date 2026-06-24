@@ -5,45 +5,20 @@ package output
 
 import (
 	"bytes"
-	"os"
 	"strings"
 	"testing"
 )
 
-func captureStdout(t *testing.T, fn func()) string {
-	t.Helper()
-
-	original := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("create pipe: %v", err)
-	}
-	os.Stdout = w
-	defer func() {
-		os.Stdout = original
-	}()
-
-	fn()
-
-	if err := w.Close(); err != nil {
-		t.Fatalf("close writer: %v", err)
-	}
-
-	var buf bytes.Buffer
-	if _, err := buf.ReadFrom(r); err != nil {
-		t.Fatalf("read captured stdout: %v", err)
-	}
-	return buf.String()
-}
-
 func TestPrintJSONFormatsStructuredPayload(t *testing.T) {
-	out := captureStdout(t, func() {
-		PrintJSON(map[string]any{
-			"status": "ok",
-			"count":  2,
-		})
+	buf := new(bytes.Buffer)
+	SetOut(buf)
+
+	PrintJSON(map[string]any{
+		"status": "ok",
+		"count":  2,
 	})
 
+	out := buf.String()
 	if !strings.Contains(out, "\"status\": \"ok\"") {
 		t.Fatalf("expected formatted JSON output, got %q", out)
 	}
@@ -53,26 +28,30 @@ func TestPrintJSONFormatsStructuredPayload(t *testing.T) {
 }
 
 func TestPrintJSONReportsMarshalError(t *testing.T) {
-	out := captureStdout(t, func() {
-		PrintJSON(make(chan int))
-	})
+	buf := new(bytes.Buffer)
+	SetOut(buf)
 
+	PrintJSON(make(chan int))
+
+	out := buf.String()
 	if !strings.Contains(out, "Error formatting JSON:") {
 		t.Fatalf("expected marshal error output, got %q", out)
 	}
 }
 
 func TestPrintTableRendersHeadersAndRows(t *testing.T) {
-	out := captureStdout(t, func() {
-		PrintTable(
-			[]string{"NAME", "STATUS"},
-			[][]string{
-				{"node-1", "healthy"},
-				{"node-2", "degraded"},
-			},
-		)
-	})
+	buf := new(bytes.Buffer)
+	SetOut(buf)
 
+	PrintTable(
+		[]string{"NAME", "STATUS"},
+		[][]string{
+			{"node-1", "healthy"},
+			{"node-2", "degraded"},
+		},
+	)
+
+	out := buf.String()
 	for _, want := range []string{"NAME", "STATUS", "node-1", "healthy", "node-2", "degraded"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("expected %q in table output, got %q", want, out)

@@ -79,3 +79,26 @@ func setEnv(t *testing.T, key, value string) {
 		}
 	})
 }
+
+func TestSave(t *testing.T) {
+	tmpDir := t.TempDir()
+	setEnv(t, "HOME", tmpDir)
+
+	cfg := &Config{
+		ServerURL: "https://admiral.test",
+		Token: "test-token",
+	}
+
+	if err := Save(cfg); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	loaded, err := Load()
+	if err != nil {
+		t.Fatalf("Load after Save: %v", err)
+	}
+
+	if loaded.ServerURL != cfg.ServerURL || loaded.Token != cfg.Token {
+		t.Errorf("loaded config does not match saved config")
+	}
+}
