@@ -318,13 +318,39 @@ func runInstancesProvision(cmd *cobra.Command, _ []string) error {
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Provisioning queued successfully!\nOperation ID: %s\nRun 'admiralctl operations show %s' to monitor status.\n", res.OperationID, res.OperationID)
+	if wait {
+		op := waitForOperationOrExit(cmd, res.OperationID)
+		instanceID, _ := op["instance_id"].(string)
+		if instanceID != "" {
+			printFinalAccessData(cmd, instanceID)
+		}
+		return nil
+	}
 	if !quiet && len(res.Credentials) > 0 {
 		printProvisionAccessData(cmd, res.Credentials)
 	}
-	if wait {
-		waitForOperationOrExit(cmd, res.OperationID)
-	}
 	return nil
+}
+
+func printFinalAccessData(cmd *cobra.Command, instanceID string) {
+	instance, err := clientOrNil().GetCustomerApp(instanceID)
+	if err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not fetch instance details: %v\n", err)
+	}
+	if hostname, ok := instance["hostname"].(string); ok && hostname != "" {
+		fmt.Fprintf(cmd.OutOrStdout(), "Hostname: %s\n", hostname)
+	}
+
+	credentials, err := clientOrNil().GetCredentials(instanceID)
+	if err != nil {
+		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not fetch credentials: %v\n", err)
+		return
+	}
+	if len(credentials) == 0 {
+		return
+	}
+	fmt.Fprintln(cmd.OutOrStdout(), "Access credentials:")
+	printProvisionAccessData(cmd, credentials)
 }
 
 func printProvisionAccessData(cmd *cobra.Command, credentials []admiral.Credential) {
@@ -360,7 +386,7 @@ func runInstancesAction(action string) func(*cobra.Command, []string) error {
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "Action %s queued successfully!\nOperation ID: %s\n", action, opID)
 		if wait {
-			waitForOperationOrExit(cmd, opID)
+			_ = waitForOperationOrExit(cmd, opID)
 		}
 		return nil
 	}
@@ -402,7 +428,7 @@ func runInstancesBackup(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "Action backup queued successfully!\nOperation ID: %s\n", opID)
 	if wait {
-		waitForOperationOrExit(cmd, opID)
+		_ = waitForOperationOrExit(cmd, opID)
 	}
 	return nil
 }
@@ -427,7 +453,7 @@ func runInstancesResize(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "Resize queued successfully!\nOperation ID: %s\n", opID)
 	if wait {
-		waitForOperationOrExit(cmd, opID)
+		_ = waitForOperationOrExit(cmd, opID)
 	}
 	return nil
 }
@@ -448,12 +474,12 @@ func runInstancesMigrate(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Migration started!\nOperation ID: %s\nInstance ID: %s\nLogical Instance ID: %s\n",
 		res.OperationID, res.InstanceID, res.LogicalInstanceID)
 	if wait {
-		waitForOperationOrExit(cmd, res.OperationID)
+		_ = waitForOperationOrExit(cmd, res.OperationID)
 	}
 	return nil
 }
 
-func waitForOperationOrExit(cmd *cobra.Command, operationID string) {
+func waitForOperationOrExit(cmd *cobra.Command, operationID string) map[string]interface{} {
 	op, err := clientOrNil().WaitForOperation(operationID, 2*time.Second)
 	if err != nil {
 		cobra.CheckErr(fmt.Errorf("wait for operation: %w", err))
@@ -464,4 +490,5 @@ func waitForOperationOrExit(cmd *cobra.Command, operationID string) {
 		output.PrintJSON(op)
 		os.Exit(1)
 	}
+	return op
 }
