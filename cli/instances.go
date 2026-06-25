@@ -283,16 +283,36 @@ func runInstancesProvision(cmd *cobra.Command, _ []string) error {
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Provisioning queued successfully!\nOperation ID: %s\nRun 'admiralctl operations show %s' to monitor status.\n", res.OperationID, res.OperationID)
 	if !quiet && len(res.Credentials) > 0 {
-		fmt.Fprintln(cmd.OutOrStdout(), "Initial credentials:")
-		for _, cred := range res.Credentials {
-			fmt.Fprintf(cmd.OutOrStdout(), "  %s.%s: %s\n", cred.Service, cred.Name, cred.Value)
-		}
-		fmt.Fprintln(cmd.OutOrStdout(), "Warning: save these credentials securely. They are displayed only once.")
+		printProvisionAccessData(cmd, res.Credentials)
 	}
 	if wait {
 		waitForOperationOrExit(cmd, res.OperationID)
 	}
 	return nil
+}
+
+func printProvisionAccessData(cmd *cobra.Command, credentials []admiral.Credential) {
+	credentialCount := 0
+	for _, cred := range credentials {
+		if cred.Kind != "notice" {
+			credentialCount++
+		}
+	}
+	if credentialCount > 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "Initial credentials:")
+		for _, cred := range credentials {
+			if cred.Kind == "notice" {
+				continue
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "  %s.%s: %s\n", cred.Service, cred.Name, cred.Value)
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), "Warning: save these credentials securely. They are displayed only once.")
+	}
+	for _, cred := range credentials {
+		if cred.Kind == "notice" {
+			fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", cred.Name, cred.Value)
+		}
+	}
 }
 
 func runInstancesAction(action string) func(*cobra.Command, []string) error {
