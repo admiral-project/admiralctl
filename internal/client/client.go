@@ -593,6 +593,21 @@ func (c *Client) GetCustomerApp(instanceID string) (map[string]interface{}, erro
 	return item, nil
 }
 
+func (c *Client) GetCredentials(instanceID string) ([]admiral.Credential, error) {
+	resp, status, err := c.request("GET", "/api/v1/customer-apps/"+url.PathEscape(instanceID)+"/credentials", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, formatHTTPError("fetch credentials", status, resp)
+	}
+	var credentials []admiral.Credential
+	if err := json.Unmarshal(resp, &credentials); err != nil {
+		return nil, err
+	}
+	return credentials, nil
+}
+
 func (c *Client) TriggerInspect(instanceID string) (string, error) {
 	resp, status, err := c.request("POST", "/api/admin/instances/"+url.PathEscape(instanceID)+"/inspect", nil)
 	if err != nil {

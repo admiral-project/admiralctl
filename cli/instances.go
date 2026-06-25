@@ -26,6 +26,7 @@ func init() {
 	instancesCmd.AddCommand(instancesShowCmd)
 	instancesCmd.AddCommand(instancesInspectCmd)
 	instancesCmd.AddCommand(instancesProvisionCmd)
+	instancesCmd.AddCommand(instancesCredentialsCmd)
 	instancesCmd.AddCommand(instancesPauseCmd)
 	instancesCmd.AddCommand(instancesResumeCmd)
 	instancesCmd.AddCommand(instancesReactivateCmd)
@@ -62,6 +63,13 @@ var instancesProvisionCmd = &cobra.Command{
 	Use:   "provision",
 	Short: "Provision a new customer application instance",
 	RunE:  runInstancesProvision,
+}
+
+var instancesCredentialsCmd = &cobra.Command{
+	Use:   "credentials <instance_id>",
+	Short: "Show exposed credentials for an instance",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runInstancesCredentials,
 }
 
 var instancesPauseCmd = &cobra.Command{
@@ -137,6 +145,7 @@ var instancesMigrateCmd = &cobra.Command{
 
 func init() {
 	instancesListCmd.Flags().String("output", "table", "Output format: table or json")
+	instancesCredentialsCmd.Flags().String("output", "table", "Output format: table or json")
 
 	instancesInspectCmd.Flags().Bool("result", false, "Show the last inspect result instead of triggering a new inspect")
 
@@ -223,6 +232,33 @@ func runInstancesShow(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	output.PrintJSON(instance)
+	return nil
+}
+
+func runInstancesCredentials(cmd *cobra.Command, args []string) error {
+	credentials, err := clientOrNil().GetCredentials(args[0])
+	if err != nil {
+		return err
+	}
+
+	outputFlag, _ := cmd.Flags().GetString("output")
+	if outputFlag == "json" {
+		output.PrintJSON(credentials)
+		return nil
+	}
+
+	if len(credentials) == 0 {
+		fmt.Fprintln(cmd.OutOrStdout(), "No credentials exposed for this instance.")
+		return nil
+	}
+
+	for _, cred := range credentials {
+		if cred.Kind == "notice" {
+			fmt.Fprintf(cmd.OutOrStdout(), "%s: %s\n", cred.Name, cred.Value)
+			continue
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "%s.%s: %s\n", cred.Service, cred.Name, cred.Value)
+	}
 	return nil
 }
 

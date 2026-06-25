@@ -159,6 +159,14 @@ Inspect containers and volumes of a running instance.
 |------|------|---------|-------------|
 | `--result` | bool | `false` | Show the last result instead of triggering a new inspect |
 
+### instances credentials INSTANCE_ID
+
+Show exposed credentials and setup notices for an instance.
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--output` | string | `table` | Output format: `table` or `json` |
+
 ### instances provision
 
 Provision a new customer application instance.
