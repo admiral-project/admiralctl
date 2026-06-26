@@ -45,7 +45,7 @@ func runInit(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("generate signing key: %w", err)
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), "private_key:"+hex.EncodeToString(priv.Seed()))
+		fmt.Fprintln(cmd.OutOrStderr(), "private_key:"+hex.EncodeToString(priv.Seed()))
 		fmt.Fprintln(cmd.OutOrStdout(), "public_key:"+hex.EncodeToString(pub))
 		return nil
 	}

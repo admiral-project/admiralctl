@@ -268,7 +268,10 @@ func (c *Client) GetStatus() (map[string]interface{}, error) {
 }
 
 func (c *Client) RegisterNode(node admiral.RegisterNodeRequest) error {
-	body, _ := json.Marshal(node)
+	body, err := json.Marshal(node)
+	if err != nil {
+		return fmt.Errorf("marshal node request: %w", err)
+	}
 	resp, status, err := c.request("POST", "/api/v1/nodes", body)
 	if err != nil {
 		return err
@@ -368,7 +371,10 @@ func (c *Client) NodeReady(id string) (map[string]interface{}, error) {
 }
 
 func (c *Client) ApplyApp(yamlContent string) (string, error) {
-	body, _ := json.Marshal(map[string]string{"yaml": yamlContent})
+	body, err := json.Marshal(map[string]string{"yaml": yamlContent})
+	if err != nil {
+		return "", fmt.Errorf("marshal app request: %w", err)
+	}
 	resp, status, err := c.request("POST", "/api/v1/apps", body)
 	if err != nil {
 		return "", err
@@ -420,7 +426,10 @@ func (c *Client) GetApp(name string) (map[string]interface{}, error) {
 }
 
 func (c *Client) UpdateAppStatus(name, status string) error {
-	body, _ := json.Marshal(map[string]string{"status": status})
+	body, err := json.Marshal(map[string]string{"status": status})
+	if err != nil {
+		return fmt.Errorf("marshal app status request: %w", err)
+	}
 	resp, code, err := c.request("PATCH", fmt.Sprintf("/api/v1/apps/%s/status", url.PathEscape(name)), body)
 	if err != nil {
 		return err
