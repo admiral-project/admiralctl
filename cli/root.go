@@ -113,3 +113,8 @@ func clientOrNil() *client.Client {
 	}
 	return currentClient
 }
+
+// SetClient sets the API client for the CLI. Used for testing.
+func SetClient(c *client.Client) {
+	currentClient = c
+}
