@@ -19,14 +19,14 @@ func TestInstancesListCmd(t *testing.T) {
 		Transport: mockRoundTripper(func(r *http.Request) (*http.Response, error) {
 			instances := []map[string]interface{}{
 				{
-					"id":                   "inst-1",
-					"customer_id":          "cust-1",
-					"app_definition_name":  "erpnext",
-					"tier_name":            "small",
-					"node_id":              "node-1",
-					"commercial_status":    "active",
-					"technical_status":     "running",
-					"storage_state":        "healthy",
+					"id":                  "inst-1",
+					"customer_id":         "cust-1",
+					"app_definition_name": "erpnext",
+					"tier_name":           "small",
+					"node_id":             "node-1",
+					"commercial_status":   "active",
+					"technical_status":    "running",
+					"storage_state":       "healthy",
 				},
 			}
 			body, _ := json.Marshal(instances)

@@ -14,20 +14,20 @@ import (
 	"github.com/admiral-project/admiral/admiralctl/internal/client"
 )
 
-func TestBackupsListCmd(t *testing.T) {
+func TestRoutesListCmd(t *testing.T) {
 	httpClient := &http.Client{
 		Transport: mockRoundTripper(func(r *http.Request) (*http.Response, error) {
-			backups := []map[string]interface{}{
+			routes := []map[string]interface{}{
 				{
-					"id":              "bk-1",
-					"instance_id":     "inst-1",
-					"backup_type":     "manual",
-					"storage_backend": "s3",
-					"status":          "succeeded",
-					"created_at":      "2023-01-01",
+					"hostname":        "wiki.example.com",
+					"route_kind":      "http",
+					"app_instance_id": "inst-1",
+					"service_name":    "main",
+					"target_url":      "http://10.0.0.1:80",
+					"status":          "active",
 				},
 			}
-			body, _ := json.Marshal(backups)
+			body, _ := json.Marshal(routes)
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Body:       io.NopCloser(bytes.NewReader(body)),
@@ -40,29 +40,23 @@ func TestBackupsListCmd(t *testing.T) {
 	SetClient(c)
 
 	got := captureStdout(func() {
-		err := runBackupsList(backupsListCmd, nil)
+		err := runRoutesList(routesListCmd, nil)
 		if err != nil {
-			t.Fatalf("runBackupsList failed: %v", err)
+			t.Fatalf("runRoutesList failed: %v", err)
 		}
 	})
 
-	if !strings.Contains(got, "bk-1") || !strings.Contains(got, "inst-1") {
-		t.Fatalf("expected bk-1 and inst-1 in output, got %q", got)
+	if !strings.Contains(got, "wiki.example.com") || !strings.Contains(got, "inst-1") {
+		t.Fatalf("expected wiki.example.com and inst-1 in output, got %q", got)
 	}
 }
 
-func TestBackupsStorageGetCmd(t *testing.T) {
+func TestRoutesSyncCmd(t *testing.T) {
 	httpClient := &http.Client{
 		Transport: mockRoundTripper(func(r *http.Request) (*http.Response, error) {
-			cfg := map[string]interface{}{
-				"backend": "s3",
-				"enabled": true,
-				"bucket":  "my-bucket",
-			}
-			body, _ := json.Marshal(cfg)
 			return &http.Response{
 				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(bytes.NewReader(body)),
+				Body:       io.NopCloser(strings.NewReader("")),
 				Header:     make(http.Header),
 			}, nil
 		}),
@@ -71,14 +65,16 @@ func TestBackupsStorageGetCmd(t *testing.T) {
 	c := client.NewWithHTTP("https://localhost", "fake-token", httpClient)
 	SetClient(c)
 
-	got := captureStdout(func() {
-		err := runBackupsStorageGet(backupsStorageGetCmd, nil)
-		if err != nil {
-			t.Fatalf("runBackupsStorageGet failed: %v", err)
-		}
-	})
+	var out bytes.Buffer
+	routesSyncCmd.SetOut(&out)
 
-	if !strings.Contains(got, "Backend:  s3") || !strings.Contains(got, "Bucket:   my-bucket") {
+	err := runRoutesSync(routesSyncCmd, nil)
+	if err != nil {
+		t.Fatalf("runRoutesSync failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "Routes synchronized successfully") {
 		t.Fatalf("unexpected output: %q", got)
 	}
 }
