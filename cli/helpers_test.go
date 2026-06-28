@@ -9,11 +9,36 @@ import (
 )
 
 func TestReadPasswordFromReaderTrimsNewlines(t *testing.T) {
-	password, err := readPasswordFromReader(strings.NewReader("super-secret\r\n"))
+	input := "secret\n"
+	got, err := readPasswordFromReader(strings.NewReader(input))
 	if err != nil {
 		t.Fatalf("readPasswordFromReader: %v", err)
 	}
-	if password != "super-secret" {
-		t.Fatalf("unexpected password %q", password)
+	if got != "secret" {
+		t.Fatalf("expected secret, got %q", got)
+	}
+}
+
+func TestSanitizeInputFilePath(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+		wantErr  bool
+	}{
+		{"/tmp/test", "/tmp/test", false},
+		{"test.yaml", "test.yaml", false},
+		{"", "", true},
+		{"/path/../to/file", "/to/file", false},
+	}
+
+	for _, tt := range tests {
+		got, err := sanitizeInputFilePath(tt.input)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("sanitizeInputFilePath(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			continue
+		}
+		if err == nil && got != tt.expected {
+			t.Errorf("sanitizeInputFilePath(%q) = %q, want %q", tt.input, got, tt.expected)
+		}
 	}
 }

@@ -5,6 +5,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -13,6 +14,7 @@ func TestLoadWithoutConfigDoesNotInjectDefaultToken(t *testing.T) {
 	setEnv(t, "ADMIRAL_SERVER_URL", "")
 	setEnv(t, "ADMIRAL_ADMIN_TOKEN", "")
 	setEnv(t, "ADMIRAL_TLS_CA_FILE", "")
+	setEnv(t, "ADMIRAL_OPERATOR", "")
 
 	cfg, err := Load()
 	if err != nil {
@@ -31,6 +33,7 @@ func TestLoadAppliesEnvironmentOverrides(t *testing.T) {
 	setEnv(t, "ADMIRAL_SERVER_URL", "https://admiral.example.com")
 	setEnv(t, "ADMIRAL_ADMIN_TOKEN", "env-token")
 	setEnv(t, "ADMIRAL_TLS_CA_FILE", "/etc/ssl/admiral-ca.pem")
+	setEnv(t, "ADMIRAL_OPERATOR", "jules")
 
 	cfg, err := Load()
 	if err != nil {
@@ -45,6 +48,9 @@ func TestLoadAppliesEnvironmentOverrides(t *testing.T) {
 	if cfg.CACertFile != "/etc/ssl/admiral-ca.pem" {
 		t.Fatalf("expected CA override, got %q", cfg.CACertFile)
 	}
+	if cfg.Operator != "jules" {
+		t.Fatalf("expected operator override, got %q", cfg.Operator)
+	}
 }
 
 func TestLoadRejectsHTTPServerURL(t *testing.T) {
@@ -56,6 +62,56 @@ func TestLoadRejectsHTTPServerURL(t *testing.T) {
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error for plaintext server URL")
+	}
+}
+
+func TestSaveAndLoadConfig(t *testing.T) {
+	tempHome := t.TempDir()
+	setEnv(t, "HOME", tempHome)
+	setEnv(t, "ADMIRAL_SERVER_URL", "")
+	setEnv(t, "ADMIRAL_ADMIN_TOKEN", "")
+	setEnv(t, "ADMIRAL_TLS_CA_FILE", "")
+	setEnv(t, "ADMIRAL_OPERATOR", "")
+
+	expected := &Config{
+		ServerURL:  "https://admiral.test",
+		Token:      "test-token",
+		CACertFile: "/tmp/ca.pem",
+		Operator:   "test-user",
+	}
+
+	if err := Save(expected); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	if cfg.ServerURL != expected.ServerURL || cfg.Token != expected.Token ||
+		cfg.CACertFile != expected.CACertFile || cfg.Operator != expected.Operator {
+		t.Fatalf("Loaded config does not match saved config: %+v", cfg)
+	}
+}
+
+func TestLoadInvalidYAML(t *testing.T) {
+	tempHome := t.TempDir()
+	setEnv(t, "HOME", tempHome)
+	setEnv(t, "ADMIRAL_SERVER_URL", "")
+	setEnv(t, "ADMIRAL_ADMIN_TOKEN", "")
+
+	configPath := GetConfigPath()
+	if err := os.MkdirAll(filepath.Dir(configPath), 0750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath, []byte("invalid: yaml: :"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error when loading invalid YAML")
 	}
 }
 

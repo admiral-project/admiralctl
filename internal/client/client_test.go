@@ -427,3 +427,220 @@ func TestMigrateInstanceError(t *testing.T) {
 		t.Fatal("expected error for bad migrate request")
 	}
 }
+
+func TestOptions(t *testing.T) {
+	c := &Client{http: &http.Client{}}
+	WithTimeout(10 * time.Second)(c)
+	if c.http.Timeout != 10*time.Second {
+		t.Errorf("WithTimeout failed, got %v", c.http.Timeout)
+	}
+	WithRetries(5, 2*time.Second)(c)
+	if c.maxRetries != 5 || c.retryDelay != 2*time.Second {
+		t.Errorf("WithRetries failed, got %d, %v", c.maxRetries, c.retryDelay)
+	}
+	WithOperator("jules")(c)
+	if c.operator != "jules" {
+		t.Errorf("WithOperator failed, got %s", c.operator)
+	}
+}
+
+func TestNodeManagement(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		switch r.URL.Path {
+		case "/api/v1/nodes":
+			if r.Method == "POST" {
+				return jsonResponse(http.StatusOK, nil)
+			}
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"id": "node-1"}})
+		case "/api/v1/nodes/node-1":
+			if r.Method == "DELETE" {
+				return jsonResponse(http.StatusOK, nil)
+			}
+			return jsonResponse(http.StatusOK, map[string]interface{}{"id": "node-1"})
+		case "/api/v1/nodes/node-1/enable":
+			return jsonResponse(http.StatusOK, nil)
+		case "/api/v1/nodes/node-1/disable":
+			return jsonResponse(http.StatusOK, nil)
+		case "/api/v1/nodes/node-1/ready":
+			return jsonResponse(http.StatusOK, map[string]interface{}{"ready": true})
+		}
+		return jsonResponse(http.StatusNotFound, nil)
+	})
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+
+	if err := c.RegisterNode(admiral.RegisterNodeRequest{}); err != nil {
+		t.Errorf("RegisterNode failed: %v", err)
+	}
+	if _, err := c.GetNodes(); err != nil {
+		t.Errorf("GetNodes failed: %v", err)
+	}
+	if _, err := c.GetNode("node-1"); err != nil {
+		t.Errorf("GetNode failed: %v", err)
+	}
+	if err := c.EnableNode("node-1"); err != nil {
+		t.Errorf("EnableNode failed: %v", err)
+	}
+	if err := c.DisableNode("node-1"); err != nil {
+		t.Errorf("DisableNode failed: %v", err)
+	}
+	if _, err := c.NodeReady("node-1"); err != nil {
+		t.Errorf("NodeReady failed: %v", err)
+	}
+	if err := c.RemoveNode("node-1"); err != nil {
+		t.Errorf("RemoveNode failed: %v", err)
+	}
+}
+
+func TestAppManagement(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		switch r.URL.Path {
+		case "/api/v1/apps":
+			if r.Method == "POST" {
+				return jsonResponse(http.StatusOK, map[string]interface{}{"name": "my-app"})
+			}
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"name": "my-app"}})
+		case "/api/v1/apps/my-app":
+			return jsonResponse(http.StatusOK, map[string]interface{}{"name": "my-app"})
+		case "/api/v1/apps/my-app/status":
+			return jsonResponse(http.StatusOK, nil)
+		}
+		return jsonResponse(http.StatusNotFound, nil)
+	})
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+
+	if _, err := c.ApplyApp("yaml"); err != nil {
+		t.Errorf("ApplyApp failed: %v", err)
+	}
+	if _, err := c.GetApps(); err != nil {
+		t.Errorf("GetApps failed: %v", err)
+	}
+	if _, err := c.GetApp("my-app"); err != nil {
+		t.Errorf("GetApp failed: %v", err)
+	}
+	if err := c.UpdateAppStatus("my-app", "active"); err != nil {
+		t.Errorf("UpdateAppStatus failed: %v", err)
+	}
+}
+
+func TestProvisioningAndActions(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		switch r.URL.Path {
+		case "/api/v1/customer-apps":
+			if r.Method == "POST" {
+				return jsonResponse(http.StatusAccepted, admiral.ProvisionResponse{OperationID: "op-1"})
+			}
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"id": "inst-1"}})
+		case "/api/v1/customer-apps/action":
+			return jsonResponse(http.StatusAccepted, admiral.OperationResponse{OperationID: "op-2"})
+		case "/api/v1/customer-apps/inst-1":
+			return jsonResponse(http.StatusOK, map[string]interface{}{"id": "inst-1"})
+		case "/api/v1/customer-apps/inst-1/credentials":
+			return jsonResponse(http.StatusOK, []admiral.Credential{})
+		}
+		return jsonResponse(http.StatusNotFound, nil)
+	})
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+
+	if _, err := c.ProvisionApp(admiral.ProvisionRequest{}); err != nil {
+		t.Errorf("ProvisionApp failed: %v", err)
+	}
+	if _, err := c.TriggerAction("inst-1", "pause"); err != nil {
+		t.Errorf("TriggerAction failed: %v", err)
+	}
+	if _, err := c.TriggerActionWithService("inst-1", "backup", "db"); err != nil {
+		t.Errorf("TriggerActionWithService failed: %v", err)
+	}
+	if _, err := c.TriggerActionWithTier("inst-1", "resize", "large"); err != nil {
+		t.Errorf("TriggerActionWithTier failed: %v", err)
+	}
+	if _, err := c.GetCustomerApps(); err != nil {
+		t.Errorf("GetCustomerApps failed: %v", err)
+	}
+	if _, err := c.GetCustomerApp("inst-1"); err != nil {
+		t.Errorf("GetCustomerApp failed: %v", err)
+	}
+	if _, err := c.GetCredentials("inst-1"); err != nil {
+		t.Errorf("GetCredentials failed: %v", err)
+	}
+}
+
+func TestOperationsAndBackups(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		switch r.URL.Path {
+		case "/api/v1/operations":
+			if r.URL.Query().Get("id") == "op-1" {
+				return jsonResponse(http.StatusOK, map[string]interface{}{"status": "succeeded"})
+			}
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"id": "op-1"}})
+		case "/api/v1/operations/op-1/retry":
+			return jsonResponse(http.StatusOK, map[string]interface{}{"id": "op-1"})
+		case "/api/v1/backups":
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"id": "bk-1"}})
+		case "/api/v1/backups/bk-1":
+			return jsonResponse(http.StatusOK, map[string]interface{}{"id": "bk-1"})
+		case "/api/v1/backups/restore":
+			return jsonResponse(http.StatusAccepted, admiral.RestoreBackupResponse{OperationID: "op-1"})
+		case "/api/admin/instances/inst-1/inspect":
+			if r.Method == "POST" {
+				return jsonResponse(http.StatusAccepted, admiral.OperationResponse{OperationID: "op-1"})
+			}
+			return jsonResponse(http.StatusOK, map[string]interface{}{"result": "ok"})
+		}
+		return jsonResponse(http.StatusNotFound, nil)
+	})
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+
+	if _, err := c.GetOperations(); err != nil {
+		t.Errorf("GetOperations failed: %v", err)
+	}
+	if _, err := c.GetOperation("op-1"); err != nil {
+		t.Errorf("GetOperation failed: %v", err)
+	}
+	if _, err := c.WaitForOperation("op-1", 1*time.Millisecond); err != nil {
+		t.Errorf("WaitForOperation failed: %v", err)
+	}
+	if _, err := c.RetryOperation("op-1"); err != nil {
+		t.Errorf("RetryOperation failed: %v", err)
+	}
+	if _, err := c.GetBackups(); err != nil {
+		t.Errorf("GetBackups failed: %v", err)
+	}
+	if _, err := c.GetBackup("bk-1"); err != nil {
+		t.Errorf("GetBackup failed: %v", err)
+	}
+	if _, err := c.RestoreBackup(admiral.RestoreBackupRequest{}); err != nil {
+		t.Errorf("RestoreBackup failed: %v", err)
+	}
+	if _, err := c.TriggerInspect("inst-1"); err != nil {
+		t.Errorf("TriggerInspect failed: %v", err)
+	}
+	if _, err := c.GetInspectResult("inst-1"); err != nil {
+		t.Errorf("GetInspectResult failed: %v", err)
+	}
+}
+
+func TestUsersManagement(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		switch r.URL.Path {
+		case "/api/admin/users":
+			if r.Method == "POST" {
+				return jsonResponse(http.StatusCreated, map[string]interface{}{"username": "user1"})
+			}
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"username": "user1"}})
+		case "/api/admin/users/user1/set-password":
+			return jsonResponse(http.StatusOK, nil)
+		}
+		return jsonResponse(http.StatusNotFound, nil)
+	})
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+
+	if _, err := c.CreateUser("user1", "pass", "admin"); err != nil {
+		t.Errorf("CreateUser failed: %v", err)
+	}
+	if _, err := c.ListUsers(); err != nil {
+		t.Errorf("ListUsers failed: %v", err)
+	}
+	if err := c.SetPassword("user1", "new-pass"); err != nil {
+		t.Errorf("SetPassword failed: %v", err)
+	}
+}
