@@ -149,7 +149,7 @@ func (c *Client) doRequest(method, url string, body []byte) ([]byte, int, error)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Admiral-Token", c.token)
+	req.Header.Set("Authorization", "Bearer "+c.token)
 	if c.operator != "" {
 		req.Header.Set("X-Admiral-Operator", c.operator)
 	}
