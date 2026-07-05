@@ -18,3 +18,15 @@ No hace:
 Regla práctica:
 
 - la CLI debe exponer el workflow real del producto sin inventar capacidades.
+
+## Pre-commit
+
+Ejecutar estos comandos antes de cada commit:
+
+```bash
+go mod tidy
+gofmt -w .
+go vet ./...
+go build ./...
+go test ./...
+```
