@@ -136,14 +136,15 @@ func setTermios(fd uintptr, state *syscall.Termios) error {
 	return nil
 }
 
-// sanitizeInputFilePath returns a clean absolute path for a user-provided file.
+// sanitizeInputFilePath returns a clean path for a user-provided file.
+// Absolute paths are accepted; path traversal (../) is rejected.
 func sanitizeInputFilePath(path string) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("empty file path")
 	}
 	clean := filepath.Clean(path)
-	if !filepath.IsLocal(clean) {
-		return "", fmt.Errorf("path %q is not a local path", path)
+	if strings.HasPrefix(clean, "..") {
+		return "", fmt.Errorf("path %q traverses above the current directory", path)
 	}
 	return clean, nil
 }
