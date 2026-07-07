@@ -525,6 +525,8 @@ func TestAppManagement(t *testing.T) {
 func TestProvisioningAndActions(t *testing.T) {
 	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Path {
+		case "/api/v1/instances":
+			return jsonResponse(http.StatusOK, []map[string]interface{}{{"id": "inst-1"}})
 		case "/api/v1/customer-apps":
 			if r.Method == "POST" {
 				return jsonResponse(http.StatusAccepted, admiral.ProvisionResponse{OperationID: "op-1"})
@@ -553,7 +555,7 @@ func TestProvisioningAndActions(t *testing.T) {
 	if _, err := c.TriggerActionWithTier("inst-1", "resize", "large"); err != nil {
 		t.Errorf("TriggerActionWithTier failed: %v", err)
 	}
-	if _, err := c.GetCustomerApps(); err != nil {
+	if _, err := c.GetCustomerApps(""); err != nil {
 		t.Errorf("GetCustomerApps failed: %v", err)
 	}
 	if _, err := c.GetCustomerApp("inst-1"); err != nil {

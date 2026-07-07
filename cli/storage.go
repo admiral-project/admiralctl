@@ -39,7 +39,7 @@ func init() {
 }
 
 func runStorageInstances(cmd *cobra.Command, _ []string) error {
-	apps, err := clientOrNil().GetCustomerApps()
+	apps, err := clientOrNil().GetCustomerApps("")
 	if err != nil {
 		return err
 	}

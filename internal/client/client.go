@@ -509,8 +509,14 @@ func (c *Client) TriggerActionWithTier(instanceID, action, tier string) (string,
 	return res.OperationID, nil
 }
 
-func (c *Client) GetCustomerApps() ([]map[string]interface{}, error) {
-	resp, status, err := c.request("GET", "/api/v1/customer-apps", nil)
+func (c *Client) GetCustomerApps(customerID string) ([]map[string]interface{}, error) {
+	var endpoint string
+	if customerID == "" {
+		endpoint = "/api/v1/instances"
+	} else {
+		endpoint = "/api/v1/customer-apps?customer_id=" + url.QueryEscape(customerID)
+	}
+	resp, status, err := c.request("GET", endpoint, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -518,11 +524,18 @@ func (c *Client) GetCustomerApps() ([]map[string]interface{}, error) {
 		return nil, formatHTTPError("fetch customer apps", status, resp)
 	}
 
+	// Admin endpoint returns a paged response; customer endpoint returns a flat array.
 	var list []map[string]interface{}
-	if err := json.Unmarshal(resp, &list); err != nil {
-		return nil, err
+	if err := json.Unmarshal(resp, &list); err == nil {
+		return list, nil
 	}
-	return list, nil
+	var paged struct {
+		Items []map[string]interface{} `json:"items"`
+	}
+	if err := json.Unmarshal(resp, &paged); err != nil {
+		return nil, fmt.Errorf("unmarshal customer apps response: %w", err)
+	}
+	return paged.Items, nil
 }
 
 func (c *Client) GetOperations() ([]map[string]interface{}, error) {

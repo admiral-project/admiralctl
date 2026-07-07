@@ -144,6 +144,7 @@ var instancesMigrateCmd = &cobra.Command{
 }
 
 func init() {
+	instancesListCmd.Flags().String("customer", "", "Filter by customer ID")
 	instancesListCmd.Flags().String("output", "table", "Output format: table or json")
 	instancesCredentialsCmd.Flags().String("output", "table", "Output format: table or json")
 
@@ -184,7 +185,8 @@ func init() {
 }
 
 func runInstancesList(cmd *cobra.Command, _ []string) error {
-	apps, err := clientOrNil().GetCustomerApps()
+	customerID, _ := cmd.Flags().GetString("customer")
+	apps, err := clientOrNil().GetCustomerApps(customerID)
 	if err != nil {
 		return err
 	}
