@@ -17,7 +17,6 @@ var (
 	currentClient *client.Client
 
 	serverURLFlag string
-	tokenFlag     string
 	caCertFlag    string
 	operatorFlag  string
 )
@@ -34,7 +33,6 @@ instances, backups, routes, and operations.`,
 
 func init() {
 	rootCmd.PersistentFlags().StringVar(&serverURLFlag, "server", "", "Control plane server endpoint URL")
-	rootCmd.PersistentFlags().StringVar(&tokenFlag, "token", "", "Authentication token (visible in process list; prefer ADMIRAL_ADMIN_TOKEN)")
 	rootCmd.PersistentFlags().StringVar(&caCertFlag, "ca-cert", "", "CA certificate file for admirald HTTPS validation")
 	rootCmd.PersistentFlags().StringVar(&operatorFlag, "operator", "", "Operator name for audit logs")
 
@@ -71,10 +69,6 @@ func loadClient(cmd *cobra.Command, _ []string) error {
 
 	if serverURLFlag != "" {
 		cfg.ServerURL = serverURLFlag
-	}
-	if tokenFlag != "" {
-		fmt.Fprintln(cmd.ErrOrStderr(), "Warning: --token exposes the secret in the process list. Prefer ADMIRAL_ADMIN_TOKEN env var.")
-		cfg.Token = tokenFlag
 	}
 	if caCertFlag != "" {
 		cfg.CACertFile = caCertFlag

@@ -141,7 +141,11 @@ func sanitizeInputFilePath(path string) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("empty file path")
 	}
-	return filepath.Clean(path), nil
+	clean := filepath.Clean(path)
+	if !filepath.IsLocal(clean) {
+		return "", fmt.Errorf("path %q is not a local path", path)
+	}
+	return clean, nil
 }
 
 // readInputFile reads the contents of a file that the user explicitly requested.
