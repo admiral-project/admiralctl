@@ -617,7 +617,7 @@ func TestOperationsAndBackups(t *testing.T) {
 	if _, err := c.GetOperation("op-1"); err != nil {
 		t.Errorf("GetOperation failed: %v", err)
 	}
-	if _, err := c.WaitForOperation("op-1", 1*time.Millisecond); err != nil {
+	if _, err := c.WaitForOperation("op-1", 1*time.Millisecond, time.Second); err != nil {
 		t.Errorf("WaitForOperation failed: %v", err)
 	}
 	if _, err := c.RetryOperation("op-1"); err != nil {
@@ -637,6 +637,17 @@ func TestOperationsAndBackups(t *testing.T) {
 	}
 	if _, err := c.GetInspectResult("inst-1"); err != nil {
 		t.Errorf("GetInspectResult failed: %v", err)
+	}
+}
+
+func TestWaitForOperationTimesOut(t *testing.T) {
+	httpClient := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		return jsonResponse(http.StatusOK, map[string]interface{}{"status": "running"})
+	})
+	c := &Client{serverURL: "https://example.com", token: "token", http: httpClient}
+
+	if _, err := c.WaitForOperation("op-timeout", time.Millisecond, 5*time.Millisecond); err == nil || !strings.Contains(err.Error(), "timed out") {
+		t.Fatalf("expected timeout error, got %v", err)
 	}
 }
 

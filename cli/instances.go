@@ -19,6 +19,8 @@ var instancesCmd = &cobra.Command{
 	Short: "Manage provisioning, pausing, or deleting customer applications",
 }
 
+const defaultWaitTimeout = 30 * time.Minute
+
 func init() {
 	rootCmd.AddCommand(instancesCmd)
 	instancesCmd.AddCommand(instancesListCmd)
@@ -159,10 +161,12 @@ func init() {
 	instancesProvisionCmd.Flags().String("logical-instance-id", "", "Preserve logical instance identity for migration")
 	instancesProvisionCmd.Flags().String("output", "table", "Output format: table or json")
 	instancesProvisionCmd.Flags().Bool("wait", false, "Wait until the operation reaches a terminal state")
+	instancesProvisionCmd.Flags().Duration("wait-timeout", defaultWaitTimeout, "Maximum time to wait for an operation")
 	instancesProvisionCmd.Flags().Bool("quiet", false, "Suppress credential output")
 
 	addWaitAndForceFlags := func(cmd *cobra.Command) {
 		cmd.Flags().Bool("wait", false, "Wait until the operation reaches a terminal state")
+		cmd.Flags().Duration("wait-timeout", defaultWaitTimeout, "Maximum time to wait for an operation")
 		cmd.Flags().Bool("force", false, "Skip confirmation prompt")
 	}
 	addWaitAndForceFlags(instancesPauseCmd)
@@ -172,13 +176,16 @@ func init() {
 	addWaitAndForceFlags(instancesStopCmd)
 	instancesRestartCmd.Flags().Bool("force", false, "Skip confirmation prompt")
 	instancesBackupCmd.Flags().Bool("wait", false, "Wait until the operation reaches a terminal state")
+	instancesBackupCmd.Flags().Duration("wait-timeout", defaultWaitTimeout, "Maximum time to wait for an operation")
 	instancesBackupCmd.Flags().String("service", "", "Service name for backup actions (required)")
 	_ = instancesBackupCmd.MarkFlagRequired("service")
 	addWaitAndForceFlags(instancesDeprovisionCmd)
 	instancesResizeCmd.Flags().Bool("wait", false, "Wait until the operation reaches a terminal state")
+	instancesResizeCmd.Flags().Duration("wait-timeout", defaultWaitTimeout, "Maximum time to wait for an operation")
 	instancesResizeCmd.Flags().String("tier", "", "Target tier name (required)")
 	_ = instancesResizeCmd.MarkFlagRequired("tier")
 	instancesMigrateCmd.Flags().Bool("wait", false, "Wait until the operation completes")
+	instancesMigrateCmd.Flags().Duration("wait-timeout", defaultWaitTimeout, "Maximum time to wait for an operation")
 	instancesMigrateCmd.Flags().String("target-node", "", "Target node ID (required)")
 	_ = instancesMigrateCmd.MarkFlagRequired("target-node")
 }
@@ -492,7 +499,11 @@ func runInstancesMigrate(cmd *cobra.Command, args []string) error {
 }
 
 func waitForOperation(cmd *cobra.Command, operationID string) (map[string]interface{}, error) {
-	op, err := clientOrNil().WaitForOperation(operationID, 2*time.Second)
+	timeout, err := cmd.Flags().GetDuration("wait-timeout")
+	if err != nil {
+		return nil, fmt.Errorf("read wait timeout: %w", err)
+	}
+	op, err := clientOrNil().WaitForOperation(operationID, 2*time.Second, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("wait for operation: %w", err)
 	}

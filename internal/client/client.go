@@ -584,8 +584,15 @@ func (c *Client) GetOperation(opID string) (map[string]interface{}, error) {
 	return res, nil
 }
 
-func (c *Client) WaitForOperation(opID string, interval time.Duration) (map[string]interface{}, error) {
+func (c *Client) WaitForOperation(opID string, interval, timeout time.Duration) (map[string]interface{}, error) {
+	if timeout <= 0 {
+		return nil, fmt.Errorf("wait for operation %q: timeout must be positive", opID)
+	}
+	deadline := time.Now().Add(timeout)
 	for {
+		if time.Now().After(deadline) {
+			return nil, fmt.Errorf("wait for operation %q timed out after %s", opID, timeout)
+		}
 		op, err := c.GetOperation(opID)
 		if err != nil {
 			return nil, err
@@ -595,7 +602,13 @@ func (c *Client) WaitForOperation(opID string, interval time.Duration) (map[stri
 		case "succeeded", "failed", "cancelled":
 			return op, nil
 		}
-		time.Sleep(interval)
+		sleepFor := interval
+		if remaining := time.Until(deadline); remaining < sleepFor {
+			sleepFor = remaining
+		}
+		if sleepFor > 0 {
+			time.Sleep(sleepFor)
+		}
 	}
 }
 
