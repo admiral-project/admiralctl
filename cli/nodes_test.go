@@ -51,6 +51,10 @@ func TestNodesListCmd(t *testing.T) {
 }
 
 func TestNodesRegisterCmd(t *testing.T) {
+	t.Setenv("ADMIRAL_NODE_TOKEN", "node-env-token")
+	if err := nodesRegisterCmd.Flags().Set("token", ""); err != nil {
+		t.Fatalf("reset token flag: %v", err)
+	}
 	httpClient := &http.Client{
 		Transport: mockRoundTripper(func(r *http.Request) (*http.Response, error) {
 			return &http.Response{

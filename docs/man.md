@@ -60,7 +60,7 @@ Register a new worker node.
 | `--public-ip` | string | no | Public IP address |
 | `--os` | string | no | Operating system (default: `linux`) |
 | `--podman` | string | no | Podman version (default: `4.9.0`) |
-| `--token` | string | no | Pre-generated node token |
+| `--token` | string | no | Pre-generated node token; prefer `ADMIRAL_NODE_TOKEN` or the secure prompt |
 
 ### nodes enable NODE_ID
 

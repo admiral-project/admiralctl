@@ -97,7 +97,7 @@ func init() {
 	nodesRegisterCmd.Flags().String("public-ip", "", "Public IP address for remote connectivity")
 	nodesRegisterCmd.Flags().String("os", "linux", "Operating System")
 	nodesRegisterCmd.Flags().String("podman", "4.9.0", "Podman Version")
-	nodesRegisterCmd.Flags().String("token", "", "Pre-generated node token for single-node mode")
+	nodesRegisterCmd.Flags().String("token", "", "Pre-generated node token (prefer ADMIRAL_NODE_TOKEN or the secure prompt)")
 
 	nodesEnableCmd.Flags().Bool("force", false, "Skip confirmation prompt")
 	nodesDisableCmd.Flags().Bool("force", false, "Skip confirmation prompt")
@@ -166,7 +166,8 @@ func runNodesRegister(cmd *cobra.Command, _ []string) error {
 	publicIP, _ := cmd.Flags().GetString("public-ip")
 	osType, _ := cmd.Flags().GetString("os")
 	podmanV, _ := cmd.Flags().GetString("podman")
-	token, _ := cmd.Flags().GetString("token")
+	tokenFlag, _ := cmd.Flags().GetString("token")
+	token := resolveToken(cmd, tokenFlag, os.Getenv("ADMIRAL_NODE_TOKEN"))
 
 	req := admiral.RegisterNodeRequest{
 		NodeID:      id,
