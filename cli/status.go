@@ -29,7 +29,7 @@ func runStatus(cmd *cobra.Command, _ []string) error {
 
 	outputFlag, _ := cmd.Flags().GetString("output")
 	if outputFlag == "json" {
-		output.PrintJSON(status)
+		output.PrintJSON(cmd.OutOrStdout(), status)
 		return nil
 	}
 

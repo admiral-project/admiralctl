@@ -69,7 +69,7 @@ func runOperationsList(cmd *cobra.Command, _ []string) error {
 
 	outputFlag, _ := cmd.Flags().GetString("output")
 	if outputFlag == "json" {
-		output.PrintJSON(ops)
+		output.PrintJSON(cmd.OutOrStdout(), ops)
 		return nil
 	}
 
@@ -84,7 +84,7 @@ func runOperationsList(cmd *cobra.Command, _ []string) error {
 			fmt.Sprintf("%v", o["updated_at"]),
 		})
 	}
-	output.PrintTable(headers, rows)
+	output.PrintTable(cmd.OutOrStdout(), headers, rows)
 	return nil
 }
 
@@ -93,7 +93,7 @@ func runOperationsShow(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("retrieve operation: %w", err)
 	}
-	output.PrintJSON(op)
+	output.PrintJSON(cmd.OutOrStdout(), op)
 	return nil
 }
 

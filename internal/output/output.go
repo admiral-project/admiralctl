@@ -6,21 +6,21 @@ package output
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+	"io"
 	"text/tabwriter"
 )
 
-func PrintJSON(data interface{}) {
+func PrintJSON(w io.Writer, data interface{}) {
 	bytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		fmt.Printf("Error formatting JSON: %v\n", err)
+		_, _ = fmt.Fprintf(w, "Error formatting JSON: %v\n", err)
 		return
 	}
-	fmt.Println(string(bytes))
+	_, _ = fmt.Fprintln(w, string(bytes))
 }
 
-func PrintTable(headers []string, rows [][]string) {
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+func PrintTable(out io.Writer, headers []string, rows [][]string) {
+	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
 
 	// Print headers
 	for i, h := range headers {

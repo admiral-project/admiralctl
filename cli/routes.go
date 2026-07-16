@@ -70,7 +70,7 @@ func runRoutesList(cmd *cobra.Command, _ []string) error {
 
 	outputFlag, _ := cmd.Flags().GetString("output")
 	if outputFlag == "json" {
-		output.PrintJSON(routes)
+		output.PrintJSON(cmd.OutOrStdout(), routes)
 		return nil
 	}
 
@@ -90,7 +90,7 @@ func runRoutesList(cmd *cobra.Command, _ []string) error {
 			fmt.Sprintf("%v", route["status"]),
 		})
 	}
-	output.PrintTable(headers, rows)
+	output.PrintTable(cmd.OutOrStdout(), headers, rows)
 	return nil
 }
 
@@ -99,7 +99,7 @@ func runRoutesShow(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("retrieve route: %w", err)
 	}
-	output.PrintJSON(route)
+	output.PrintJSON(cmd.OutOrStdout(), route)
 	return nil
 }
 

@@ -86,7 +86,7 @@ func runAppsList(cmd *cobra.Command, _ []string) error {
 
 	outputFlag, _ := cmd.Flags().GetString("output")
 	if outputFlag == "json" {
-		output.PrintJSON(apps)
+		output.PrintJSON(cmd.OutOrStdout(), apps)
 		return nil
 	}
 
@@ -100,7 +100,7 @@ func runAppsList(cmd *cobra.Command, _ []string) error {
 			fmt.Sprintf("%v", a["created_at"]),
 		})
 	}
-	output.PrintTable(headers, rows)
+	output.PrintTable(cmd.OutOrStdout(), headers, rows)
 	return nil
 }
 
@@ -109,7 +109,7 @@ func runAppsShow(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output.PrintJSON(app)
+	output.PrintJSON(cmd.OutOrStdout(), app)
 	return nil
 }
 

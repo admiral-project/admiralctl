@@ -29,13 +29,6 @@ func confirmDestructive(cmd *cobra.Command, action, target string) bool {
 	return strings.ToLower(strings.TrimSpace(confirm)) == "y"
 }
 
-// requireToken ensures a token is present in the loaded configuration.
-func requireToken() {
-	if cfg == nil || strings.TrimSpace(cfg.Token) == "" {
-		cobra.CheckErr(fmt.Errorf("no authentication token configured. Run 'admiralctl init --token <token>' or set ADMIRAL_ADMIN_TOKEN"))
-	}
-}
-
 // resolveToken returns the token to use, preferring an explicit flag, then the
 // configured token, then prompting the user interactively.
 func resolveToken(cmd *cobra.Command, tokenFlag, cfgToken string) string {
@@ -57,27 +50,28 @@ func resolveToken(cmd *cobra.Command, tokenFlag, cfgToken string) string {
 }
 
 // printPolicyRejected renders a rejected provisioning response in human-readable form.
-func printPolicyRejected(resp admiral.ProvisioningRejectedResponse) {
-	fmt.Printf("Action blocked by policy.\nCode: %s\nMessage: %s\n", resp.Code, resp.Message)
+func printPolicyRejected(cmd *cobra.Command, resp admiral.ProvisioningRejectedResponse) {
+	out := cmd.OutOrStdout()
+	fmt.Fprintf(out, "Action blocked by policy.\nCode: %s\nMessage: %s\n", resp.Code, resp.Message)
 	if resp.OperationID != "" {
-		fmt.Printf("Operation ID: %s\n", resp.OperationID)
+		fmt.Fprintf(out, "Operation ID: %s\n", resp.OperationID)
 	}
 	if resp.TaskID != "" {
-		fmt.Printf("Task ID: %s\n", resp.TaskID)
+		fmt.Fprintf(out, "Task ID: %s\n", resp.TaskID)
 	}
 	if resp.RequestedNodeID != "" {
-		fmt.Printf("Requested node: %s\n", resp.RequestedNodeID)
+		fmt.Fprintf(out, "Requested node: %s\n", resp.RequestedNodeID)
 	}
 	for _, evaluation := range resp.NodeEvaluations {
 		state := "blocked"
 		if evaluation.Eligible {
 			state = "eligible"
 		}
-		fmt.Printf("Node %s: %s", evaluation.NodeID, state)
+		fmt.Fprintf(out, "Node %s: %s", evaluation.NodeID, state)
 		if len(evaluation.RejectionReasons) > 0 {
-			fmt.Printf(" (%s)", strings.Join(evaluation.RejectionReasons, ", "))
+			fmt.Fprintf(out, " (%s)", strings.Join(evaluation.RejectionReasons, ", "))
 		}
-		fmt.Println()
+		fmt.Fprintln(out)
 	}
 }
 

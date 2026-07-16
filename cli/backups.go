@@ -120,7 +120,7 @@ func runBackupsList(cmd *cobra.Command, _ []string) error {
 
 	outputFlag, _ := cmd.Flags().GetString("output")
 	if outputFlag == "json" {
-		output.PrintJSON(backups)
+		output.PrintJSON(cmd.OutOrStdout(), backups)
 		return nil
 	}
 
@@ -136,7 +136,7 @@ func runBackupsList(cmd *cobra.Command, _ []string) error {
 			fmt.Sprintf("%v", b["created_at"]),
 		})
 	}
-	output.PrintTable(headers, rows)
+	output.PrintTable(cmd.OutOrStdout(), headers, rows)
 	return nil
 }
 
@@ -145,7 +145,7 @@ func runBackupsShow(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output.PrintJSON(backup)
+	output.PrintJSON(cmd.OutOrStdout(), backup)
 	return nil
 }
 
@@ -187,7 +187,7 @@ func runBackupsStorageGet(cmd *cobra.Command, _ []string) error {
 
 	outputFlag, _ := cmd.Flags().GetString("output")
 	if outputFlag == "json" {
-		output.PrintJSON(cfg)
+		output.PrintJSON(cmd.OutOrStdout(), cfg)
 		return nil
 	}
 

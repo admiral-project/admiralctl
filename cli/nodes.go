@@ -115,7 +115,7 @@ func runNodesList(cmd *cobra.Command, _ []string) error {
 
 	outputFlag, _ := cmd.Flags().GetString("output")
 	if outputFlag == "json" {
-		output.PrintJSON(nodes)
+		output.PrintJSON(cmd.OutOrStdout(), nodes)
 		return nil
 	}
 
@@ -153,7 +153,7 @@ func runNodesList(cmd *cobra.Command, _ []string) error {
 			pubIP,
 		})
 	}
-	output.PrintTable(headers, rows)
+	output.PrintTable(cmd.OutOrStdout(), headers, rows)
 	return nil
 }
 
@@ -192,7 +192,7 @@ func runNodesShow(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output.PrintJSON(node)
+	output.PrintJSON(cmd.OutOrStdout(), node)
 	return nil
 }
 
@@ -250,6 +250,6 @@ func runNodesReady(cmd *cobra.Command, _ []string) error {
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "✓ node %s (%s) ready\n", nodeID, role)
-	output.PrintJSON(result)
+	output.PrintJSON(cmd.OutOrStdout(), result)
 	return nil
 }

@@ -55,7 +55,7 @@ func runUserList(cmd *cobra.Command, _ []string) error {
 
 	outputFlag, _ := cmd.Flags().GetString("output")
 	if outputFlag == "json" {
-		output.PrintJSON(users)
+		output.PrintJSON(cmd.OutOrStdout(), users)
 		return nil
 	}
 
@@ -68,7 +68,7 @@ func runUserList(cmd *cobra.Command, _ []string) error {
 			fmt.Sprintf("%v", u["created_at"]),
 		})
 	}
-	output.PrintTable(headers, rows)
+	output.PrintTable(cmd.OutOrStdout(), headers, rows)
 	return nil
 }
 

@@ -46,7 +46,7 @@ func runStorageInstances(cmd *cobra.Command, _ []string) error {
 
 	outputFlag, _ := cmd.Flags().GetString("output")
 	if outputFlag == "json" {
-		output.PrintJSON(apps)
+		output.PrintJSON(cmd.OutOrStdout(), apps)
 		return nil
 	}
 
@@ -88,7 +88,7 @@ func runStorageInstances(cmd *cobra.Command, _ []string) error {
 			graceEnds,
 		})
 	}
-	output.PrintTable(headers, rows)
+	output.PrintTable(cmd.OutOrStdout(), headers, rows)
 	return nil
 }
 
@@ -100,7 +100,7 @@ func runStorageNodes(cmd *cobra.Command, _ []string) error {
 
 	outputFlag, _ := cmd.Flags().GetString("output")
 	if outputFlag == "json" {
-		output.PrintJSON(nodes)
+		output.PrintJSON(cmd.OutOrStdout(), nodes)
 		return nil
 	}
 
@@ -152,6 +152,6 @@ func runStorageNodes(cmd *cobra.Command, _ []string) error {
 			stState,
 		})
 	}
-	output.PrintTable(headers, rows)
+	output.PrintTable(cmd.OutOrStdout(), headers, rows)
 	return nil
 }

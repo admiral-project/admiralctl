@@ -192,7 +192,7 @@ func runInstancesList(cmd *cobra.Command, _ []string) error {
 
 	outputFlag, _ := cmd.Flags().GetString("output")
 	if outputFlag == "json" {
-		output.PrintJSON(apps)
+		output.PrintJSON(cmd.OutOrStdout(), apps)
 		return nil
 	}
 
@@ -223,7 +223,7 @@ func runInstancesList(cmd *cobra.Command, _ []string) error {
 			storageState,
 		})
 	}
-	output.PrintTable(headers, rows)
+	output.PrintTable(cmd.OutOrStdout(), headers, rows)
 	return nil
 }
 
@@ -232,7 +232,7 @@ func runInstancesShow(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	output.PrintJSON(instance)
+	output.PrintJSON(cmd.OutOrStdout(), instance)
 	return nil
 }
 
@@ -244,7 +244,7 @@ func runInstancesCredentials(cmd *cobra.Command, args []string) error {
 
 	outputFlag, _ := cmd.Flags().GetString("output")
 	if outputFlag == "json" {
-		output.PrintJSON(credentials)
+		output.PrintJSON(cmd.OutOrStdout(), credentials)
 		return nil
 	}
 
@@ -270,7 +270,7 @@ func runInstancesInspect(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		output.PrintJSON(result)
+		output.PrintJSON(cmd.OutOrStdout(), result)
 		return nil
 	}
 	opID, err := clientOrNil().TriggerInspect(args[0])
@@ -304,9 +304,9 @@ func runInstancesProvision(cmd *cobra.Command, _ []string) error {
 		var rejected *client.ProvisionRejectedError
 		if errors.As(err, &rejected) {
 			if outputFlag == "json" {
-				output.PrintJSON(rejected.Response)
+				output.PrintJSON(cmd.OutOrStdout(), rejected.Response)
 			} else {
-				printPolicyRejected(rejected.Response)
+				printPolicyRejected(cmd, rejected.Response)
 			}
 			return fmt.Errorf("provision rejected")
 		}
@@ -314,7 +314,7 @@ func runInstancesProvision(cmd *cobra.Command, _ []string) error {
 	}
 
 	if outputFlag == "json" {
-		output.PrintJSON(res)
+		output.PrintJSON(cmd.OutOrStdout(), res)
 		return nil
 	}
 
@@ -454,7 +454,7 @@ func runInstancesResize(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		var rejected *client.ProvisionRejectedError
 		if errors.As(err, &rejected) {
-			printPolicyRejected(rejected.Response)
+			printPolicyRejected(cmd, rejected.Response)
 			return fmt.Errorf("resize rejected")
 		}
 		return err
@@ -499,7 +499,7 @@ func waitForOperation(cmd *cobra.Command, operationID string) (map[string]interf
 	status := fmt.Sprintf("%v", op["status"])
 	fmt.Fprintf(cmd.OutOrStdout(), "Operation %s finished with status: %s\n", operationID, status)
 	if status != "succeeded" {
-		output.PrintJSON(op)
+		output.PrintJSON(cmd.OutOrStdout(), op)
 		return op, fmt.Errorf("operation %s finished with status %s", operationID, status)
 	}
 	return op, nil
