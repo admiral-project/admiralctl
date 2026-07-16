@@ -6,6 +6,7 @@ package cli
 import (
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -22,5 +23,15 @@ func TestReadAndValidateERPNextExampleAppFile(t *testing.T) {
 	}
 	if payload.Name != "erpnext" {
 		t.Fatalf("expected erpnext payload, got %q", payload.Name)
+	}
+}
+
+func TestReadAndValidateAppFileRejectsTraversal(t *testing.T) {
+	_, _, err := readAndValidateAppFile(nil, "../testdata/app.yaml")
+	if err == nil {
+		t.Fatal("expected path traversal to be rejected")
+	}
+	if !strings.Contains(err.Error(), "validate file path") {
+		t.Fatalf("expected validation error, got %v", err)
 	}
 }

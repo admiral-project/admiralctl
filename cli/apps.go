@@ -141,13 +141,13 @@ func runAppsValidate(cmd *cobra.Command, _ []string) error {
 
 func readAndValidateAppFile(cmd *cobra.Command, file string) ([]byte, admiral.AppDefinitionPayload, error) {
 	var payload admiral.AppDefinitionPayload
-	path, err := filepath.Abs(file)
-	if err != nil {
-		return nil, payload, fmt.Errorf("resolve file path %s: %w", file, err)
-	}
-	path, err = sanitizeInputFilePath(path)
+	path, err := sanitizeInputFilePath(file)
 	if err != nil {
 		return nil, payload, fmt.Errorf("validate file path %s: %w", file, err)
+	}
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return nil, payload, fmt.Errorf("resolve file path %s: %w", file, err)
 	}
 	data, err := readInputFile(path)
 	if err != nil {
