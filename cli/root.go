@@ -57,6 +57,9 @@ func Execute() {
 // loadClient loads the CLI configuration, applies flag overrides, and creates
 // the API client. It is skipped for commands that do not need API access.
 func loadClient(cmd *cobra.Command, _ []string) error {
+	if err := validateOutputFlag(cmd); err != nil {
+		return err
+	}
 	if skipClientLoad(cmd) {
 		return nil
 	}
@@ -84,6 +87,23 @@ func loadClient(cmd *cobra.Command, _ []string) error {
 	currentClient, err = client.New(cfg.ServerURL, cfg.Token, cfg.CACertFile, client.WithOperator(cfg.Operator))
 	if err != nil {
 		return fmt.Errorf("create TLS client: %w", err)
+	}
+	return nil
+}
+
+// validateOutputFlag rejects typos instead of silently falling back to table
+// output. Commands without an --output flag are unaffected.
+func validateOutputFlag(cmd *cobra.Command) error {
+	flag := cmd.Flags().Lookup("output")
+	if flag == nil {
+		return nil
+	}
+	value, err := cmd.Flags().GetString("output")
+	if err != nil {
+		return fmt.Errorf("read --output: %w", err)
+	}
+	if value != "table" && value != "json" {
+		return fmt.Errorf("invalid --output value %q: must be table or json", value)
 	}
 	return nil
 }

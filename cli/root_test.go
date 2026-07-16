@@ -4,8 +4,9 @@
 package cli
 
 import (
-	"github.com/spf13/cobra"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
 func TestSkipClientLoad(t *testing.T) {
@@ -24,5 +25,26 @@ func TestSkipClientLoad(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("skipClientLoad(%q) = %v, want %v", tt.cmdName, got, tt.want)
 		}
+	}
+}
+
+func TestValidateOutputFlag(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().String("output", "table", "output format")
+
+	for _, value := range []string{"table", "json"} {
+		if err := cmd.Flags().Set("output", value); err != nil {
+			t.Fatalf("set output: %v", err)
+		}
+		if err := validateOutputFlag(cmd); err != nil {
+			t.Errorf("validateOutputFlag(%q) returned error: %v", value, err)
+		}
+	}
+
+	if err := cmd.Flags().Set("output", "yaml"); err != nil {
+		t.Fatalf("set invalid output: %v", err)
+	}
+	if err := validateOutputFlag(cmd); err == nil {
+		t.Fatal("validateOutputFlag accepted invalid output")
 	}
 }
