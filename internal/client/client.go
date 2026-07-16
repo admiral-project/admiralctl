@@ -441,7 +441,10 @@ func (c *Client) UpdateAppStatus(name, status string) error {
 }
 
 func (c *Client) ProvisionApp(req admiral.ProvisionRequest) (*admiral.ProvisionResponse, error) {
-	body, _ := json.Marshal(req)
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("marshal provision request: %w", err)
+	}
 	resp, status, err := c.request("POST", "/api/v1/customer-apps", body)
 	if err != nil {
 		return nil, err
@@ -465,11 +468,14 @@ func (c *Client) TriggerAction(instanceID, action string) (string, error) {
 }
 
 func (c *Client) TriggerActionWithService(instanceID, action, service string) (string, error) {
-	body, _ := json.Marshal(map[string]string{
+	body, err := json.Marshal(map[string]string{
 		"instance_id": instanceID,
 		"action":      action,
 		"service":     service,
 	})
+	if err != nil {
+		return "", fmt.Errorf("marshal action request: %w", err)
+	}
 	resp, status, err := c.request("POST", "/api/v1/customer-apps/action", body)
 	if err != nil {
 		return "", err
@@ -486,11 +492,14 @@ func (c *Client) TriggerActionWithService(instanceID, action, service string) (s
 }
 
 func (c *Client) TriggerActionWithTier(instanceID, action, tier string) (string, error) {
-	body, _ := json.Marshal(map[string]string{
+	body, err := json.Marshal(map[string]string{
 		"instance_id": instanceID,
 		"action":      action,
 		"tier":        tier,
 	})
+	if err != nil {
+		return "", fmt.Errorf("marshal tier action request: %w", err)
+	}
 	resp, status, err := c.request("POST", "/api/v1/customer-apps/action", body)
 	if err != nil {
 		return "", err
@@ -661,7 +670,10 @@ func (c *Client) GetInspectResult(instanceID string) (map[string]interface{}, er
 }
 
 func (c *Client) RestoreBackup(req admiral.RestoreBackupRequest) (*admiral.RestoreBackupResponse, error) {
-	body, _ := json.Marshal(req)
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("marshal restore request: %w", err)
+	}
 	resp, status, err := c.request("POST", "/api/v1/backups/restore", body)
 	if err != nil {
 		return nil, err
@@ -783,11 +795,14 @@ func (c *Client) DisableRoute(hostname string) error {
 // --- User Management ---
 
 func (c *Client) CreateUser(username, password, role string) (map[string]interface{}, error) {
-	body, _ := json.Marshal(map[string]string{
+	body, err := json.Marshal(map[string]string{
 		"username": username,
 		"password": password,
 		"role":     role,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal create-user request: %w", err)
+	}
 	resp, status, err := c.request("POST", "/api/admin/users", body)
 	if err != nil {
 		return nil, err
@@ -803,7 +818,10 @@ func (c *Client) CreateUser(username, password, role string) (map[string]interfa
 }
 
 func (c *Client) SetPassword(username, newPassword string) error {
-	body, _ := json.Marshal(map[string]string{"new_password": newPassword})
+	body, err := json.Marshal(map[string]string{"new_password": newPassword})
+	if err != nil {
+		return fmt.Errorf("marshal set-password request: %w", err)
+	}
 	resp, status, err := c.request("POST", "/api/admin/users/"+url.PathEscape(username)+"/set-password", body)
 	if err != nil {
 		return err
@@ -830,7 +848,10 @@ func (c *Client) GetBackupStorageConfig() (*admiral.BackupStorageConfig, error) 
 }
 
 func (c *Client) SetBackupStorageConfig(cfg admiral.BackupStorageConfig) error {
-	body, _ := json.Marshal(cfg)
+	body, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("marshal backup storage config: %w", err)
+	}
 	resp, status, err := c.request("PUT", "/api/admin/settings/backup-storage", body)
 	if err != nil {
 		return err
@@ -875,7 +896,10 @@ func (c *Client) PruneBackups() error {
 }
 
 func (c *Client) MigrateInstance(instanceID, targetNodeID string) (*admiral.MigrateAppResponse, error) {
-	body, _ := json.Marshal(admiral.MigrateAppRequest{TargetNodeID: targetNodeID})
+	body, err := json.Marshal(admiral.MigrateAppRequest{TargetNodeID: targetNodeID})
+	if err != nil {
+		return nil, fmt.Errorf("marshal migrate request: %w", err)
+	}
 	resp, status, err := c.request("POST", "/api/admin/instances/"+url.PathEscape(instanceID)+"/migrate", body)
 	if err != nil {
 		return nil, err
