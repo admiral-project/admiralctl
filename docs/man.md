@@ -24,7 +24,7 @@ Initialize or update local CLI configuration.
 | `--server` | string | admirald API endpoint |
 | `--token` | string | Shared authentication token |
 | `--ca-cert` | string | CA certificate for TLS |
-| `--generate-signing-key` | bool | Generate Ed25519 signing key pair |
+| `--generate-signing-key` | bool | Generate Ed25519 key pair; save the private seed under `~/.config/admiralctl/signing-key.seed` with mode 0600 |
 
 ### status
 

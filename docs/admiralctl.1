@@ -46,7 +46,9 @@ Administrative authentication token.
 CA certificate for TLS verification.
 .TP
 \fB--generate-signing-key\fR
-Generate Ed25519 signing key pair for task verification.
+Generate an Ed25519 signing key pair. The private seed is saved under
+~/.config/admiralctl/signing-key.seed with mode 0600; only the public key is
+printed.
 .SS status
 Check admirald health.
 .TP
