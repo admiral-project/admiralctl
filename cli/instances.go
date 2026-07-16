@@ -6,7 +6,6 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/admiral-project/admiral/admiralctl/internal/client"
@@ -321,7 +320,10 @@ func runInstancesProvision(cmd *cobra.Command, _ []string) error {
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Provisioning queued successfully!\nOperation ID: %s\nRun 'admiralctl operations show %s' to monitor status.\n", res.OperationID, res.OperationID)
 	if wait {
-		op := waitForOperationOrExit(cmd, res.OperationID)
+		op, err := waitForOperation(cmd, res.OperationID)
+		if err != nil {
+			return err
+		}
 		instanceID, _ := op["instance_id"].(string)
 		if instanceID != "" {
 			printFinalAccessData(cmd, instanceID)
@@ -388,7 +390,9 @@ func runInstancesAction(action string) func(*cobra.Command, []string) error {
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "Action %s queued successfully!\nOperation ID: %s\n", action, opID)
 		if wait {
-			_ = waitForOperationOrExit(cmd, opID)
+			if _, err := waitForOperation(cmd, opID); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
@@ -430,7 +434,9 @@ func runInstancesBackup(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "Action backup queued successfully!\nOperation ID: %s\n", opID)
 	if wait {
-		_ = waitForOperationOrExit(cmd, opID)
+		if _, err := waitForOperation(cmd, opID); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -455,7 +461,9 @@ func runInstancesResize(cmd *cobra.Command, args []string) error {
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "Resize queued successfully!\nOperation ID: %s\n", opID)
 	if wait {
-		_ = waitForOperationOrExit(cmd, opID)
+		if _, err := waitForOperation(cmd, opID); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -476,21 +484,23 @@ func runInstancesMigrate(cmd *cobra.Command, args []string) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Migration started!\nOperation ID: %s\nInstance ID: %s\nLogical Instance ID: %s\n",
 		res.OperationID, res.InstanceID, res.LogicalInstanceID)
 	if wait {
-		_ = waitForOperationOrExit(cmd, res.OperationID)
+		if _, err := waitForOperation(cmd, res.OperationID); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func waitForOperationOrExit(cmd *cobra.Command, operationID string) map[string]interface{} {
+func waitForOperation(cmd *cobra.Command, operationID string) (map[string]interface{}, error) {
 	op, err := clientOrNil().WaitForOperation(operationID, 2*time.Second)
 	if err != nil {
-		cobra.CheckErr(fmt.Errorf("wait for operation: %w", err))
+		return nil, fmt.Errorf("wait for operation: %w", err)
 	}
 	status := fmt.Sprintf("%v", op["status"])
 	fmt.Fprintf(cmd.OutOrStdout(), "Operation %s finished with status: %s\n", operationID, status)
 	if status != "succeeded" {
 		output.PrintJSON(op)
-		os.Exit(1)
+		return op, fmt.Errorf("operation %s finished with status %s", operationID, status)
 	}
-	return op
+	return op, nil
 }
