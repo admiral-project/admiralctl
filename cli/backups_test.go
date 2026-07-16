@@ -10,8 +10,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-
-	"github.com/admiral-project/admiral/admiralctl/internal/client"
 )
 
 func TestBackupsListCmd(t *testing.T) {
@@ -36,7 +34,7 @@ func TestBackupsListCmd(t *testing.T) {
 		}),
 	}
 
-	c := client.NewWithHTTP("https://localhost", "fake-token", httpClient)
+	c := newMockClient(t, httpClient)
 	SetClient(c)
 
 	got := captureStdout(func() {
@@ -68,7 +66,7 @@ func TestBackupsStorageGetCmd(t *testing.T) {
 		}),
 	}
 
-	c := client.NewWithHTTP("https://localhost", "fake-token", httpClient)
+	c := newMockClient(t, httpClient)
 	SetClient(c)
 
 	got := captureStdout(func() {

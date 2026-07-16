@@ -66,7 +66,10 @@ func runInit(cmd *cobra.Command, _ []string) error {
 		caCert = cfg.CACertFile
 	}
 
-	resolved := resolveToken(cmd, token, cfg.Token)
+	resolved, err := resolveToken(cmd, token, cfg.Token)
+	if err != nil {
+		return err
+	}
 	if resolved == "" {
 		return fmt.Errorf("authentication token is required. Use --token or export ADMIRAL_ADMIN_TOKEN")
 	}

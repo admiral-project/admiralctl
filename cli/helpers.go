@@ -31,22 +31,21 @@ func confirmDestructive(cmd *cobra.Command, action, target string) bool {
 
 // resolveToken returns the token to use, preferring an explicit flag, then the
 // configured token, then prompting the user interactively.
-func resolveToken(cmd *cobra.Command, tokenFlag, cfgToken string) string {
+func resolveToken(cmd *cobra.Command, tokenFlag, cfgToken string) (string, error) {
 	if tokenFlag != "" {
 		fmt.Fprintln(cmd.ErrOrStderr(), "Warning: --token exposes the secret in the process list. Prefer ADMIRAL_ADMIN_TOKEN env var.")
-		return tokenFlag
+		return tokenFlag, nil
 	}
 	if cfgToken != "" {
-		return cfgToken
+		return cfgToken, nil
 	}
 	fmt.Fprint(cmd.OutOrStdout(), "Enter admin token: ")
 	t, err := readPassword()
 	if err != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "\nFailed to read token: %v\n", err)
-		os.Exit(1)
+		return "", fmt.Errorf("read authentication token: %w", err)
 	}
 	fmt.Fprintln(cmd.OutOrStdout())
-	return strings.TrimSpace(t)
+	return strings.TrimSpace(t), nil
 }
 
 // printPolicyRejected renders a rejected provisioning response in human-readable form.

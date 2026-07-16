@@ -86,6 +86,16 @@ func WithOperator(operator string) Option {
 	}
 }
 
+// WithHTTPClient replaces the default HTTP client for an explicitly supplied
+// transport, such as a test client.
+func WithHTTPClient(httpClient *http.Client) Option {
+	return func(c *Client) {
+		if httpClient != nil {
+			c.http = httpClient
+		}
+	}
+}
+
 func New(serverURL, token, caCertFile string, opts ...Option) (*Client, error) {
 	if err := tlsconfig.ValidateURLScheme(serverURL, "https"); err != nil {
 		return nil, err
@@ -945,14 +955,4 @@ func (c *Client) ListUsers() ([]map[string]interface{}, error) {
 		return nil, err
 	}
 	return list, nil
-}
-
-func NewWithHTTP(serverURL, token string, httpClient *http.Client) *Client {
-	return &Client{
-		serverURL:  serverURL,
-		token:      token,
-		http:       httpClient,
-		maxRetries: 3,
-		retryDelay: 1 * time.Second,
-	}
 }

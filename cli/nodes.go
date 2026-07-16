@@ -167,7 +167,10 @@ func runNodesRegister(cmd *cobra.Command, _ []string) error {
 	osType, _ := cmd.Flags().GetString("os")
 	podmanV, _ := cmd.Flags().GetString("podman")
 	tokenFlag, _ := cmd.Flags().GetString("token")
-	token := resolveToken(cmd, tokenFlag, os.Getenv("ADMIRAL_NODE_TOKEN"))
+	token, err := resolveToken(cmd, tokenFlag, os.Getenv("ADMIRAL_NODE_TOKEN"))
+	if err != nil {
+		return err
+	}
 
 	req := admiral.RegisterNodeRequest{
 		NodeID:      id,
@@ -241,8 +244,7 @@ func runNodesReady(cmd *cobra.Command, _ []string) error {
 
 	result, err := clientOrNil().NodeReady(nodeID)
 	if err != nil {
-		fmt.Fprintf(cmd.ErrOrStderr(), "✗ node %s unreachable: %s\n", nodeID, err.Error())
-		os.Exit(1)
+		return fmt.Errorf("node %s unreachable: %w", nodeID, err)
 	}
 
 	role := fmt.Sprintf("%v", result["role"])
