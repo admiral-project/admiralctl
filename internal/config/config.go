@@ -26,6 +26,11 @@ func GetConfigPath() string {
 	return filepath.Join(home, ".config", "admiralctl", "config.yaml")
 }
 
+// GetSigningKeyPath returns the path used for the local Ed25519 signing seed.
+func GetSigningKeyPath() string {
+	return filepath.Join(filepath.Dir(GetConfigPath()), "signing-key.seed")
+}
+
 func Load() (*Config, error) {
 	cfg := &Config{
 		ServerURL: "https://localhost:8080",

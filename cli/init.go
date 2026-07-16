@@ -8,6 +8,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/admiral-project/admiral/admiralctl/internal/config"
 	"github.com/admiral-project/admiral/admirald/pkg/admiral/tlsconfig"
@@ -45,7 +47,11 @@ func runInit(cmd *cobra.Command, _ []string) error {
 		if err != nil {
 			return fmt.Errorf("generate signing key: %w", err)
 		}
-		fmt.Fprintln(cmd.OutOrStderr(), "private_key:"+hex.EncodeToString(priv.Seed()))
+		keyPath := config.GetSigningKeyPath()
+		if err := writeSigningKey(keyPath, priv.Seed()); err != nil {
+			return fmt.Errorf("save signing key: %w", err)
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), "private_key_file:"+keyPath)
 		fmt.Fprintln(cmd.OutOrStdout(), "public_key:"+hex.EncodeToString(pub))
 		return nil
 	}
@@ -77,5 +83,23 @@ func runInit(cmd *cobra.Command, _ []string) error {
 	}
 
 	fmt.Fprintf(cmd.OutOrStdout(), "Configuration initialized successfully!\nSaved to: %s\nTarget server: %s\n", config.GetConfigPath(), cfg.ServerURL)
+	return nil
+}
+
+func writeSigningKey(path string, seed []byte) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return fmt.Errorf("create signing key directory: %w", err)
+	}
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(file, "%s\n", hex.EncodeToString(seed)); err != nil {
+		_ = file.Close()
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return err
+	}
 	return nil
 }
