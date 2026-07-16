@@ -34,6 +34,8 @@ type Client struct {
 
 type Option func(*Client)
 
+const maxResponseSize = 10 * 1024 * 1024
+
 type ProvisionRejectedError struct {
 	Response admiral.ProvisioningRejectedResponse
 }
@@ -163,9 +165,12 @@ func (c *Client) doRequest(method, url string, body []byte) ([]byte, int, error)
 	}
 	defer resp.Body.Close()
 
-	respBytes, err := io.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseSize+1))
 	if err != nil {
 		return nil, resp.StatusCode, err
+	}
+	if len(respBytes) > maxResponseSize {
+		return nil, resp.StatusCode, fmt.Errorf("response body exceeds %d bytes", maxResponseSize)
 	}
 
 	return respBytes, resp.StatusCode, nil

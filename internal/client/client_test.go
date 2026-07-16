@@ -135,6 +135,25 @@ func TestRetryOnServerError(t *testing.T) {
 	}
 }
 
+func TestDoRequestRejectsOversizedResponse(t *testing.T) {
+	c := &Client{
+		serverURL: "https://example.com",
+		token:     "token",
+		http: newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader(strings.Repeat("x", maxResponseSize+1))),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+
+	_, _, err := c.doRequest(http.MethodGet, "https://example.com/status", nil)
+	if err == nil || !strings.Contains(err.Error(), "response body exceeds") {
+		t.Fatalf("expected oversized response error, got %v", err)
+	}
+}
+
 func TestNoRetryOnClientError(t *testing.T) {
 	attempts := 0
 	client := newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
