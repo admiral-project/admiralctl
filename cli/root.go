@@ -27,7 +27,7 @@ var rootCmd = &cobra.Command{
 	Long: `admiralctl is the official command-line interface for the Admiral PaaS platform.
 
 It communicates with the admirald control plane to manage nodes, applications,
-instances, backups, routes, and operations.`,
+instances, backups, routes, secrets, and operations.`,
 	PersistentPreRunE: loadClient,
 }
 

@@ -860,6 +860,21 @@ func (c *Client) SetPassword(username, newPassword string) error {
 	return nil
 }
 
+func (c *Client) RotateSecrets() (map[string]int, error) {
+	body, status, err := c.request(http.MethodPost, "/api/v1/secrets/rotate", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status < 200 || status >= 300 {
+		return nil, fmt.Errorf("secret rotation failed: HTTP %d: %s", status, strings.TrimSpace(string(body)))
+	}
+	var result map[string]int
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("decode secret rotation response: %w", err)
+	}
+	return result, nil
+}
+
 func (c *Client) GetBackupStorageConfig() (*admiral.BackupStorageConfig, error) {
 	resp, status, err := c.request("GET", "/api/admin/settings/backup-storage", nil)
 	if err != nil {
