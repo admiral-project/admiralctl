@@ -33,3 +33,21 @@ func TestPrintProvisionAccessData(t *testing.T) {
 		t.Fatalf("expected setup notice, got %q", output)
 	}
 }
+
+func TestQuietProvisionJSONOmitsCredentials(t *testing.T) {
+	res := admiral.ProvisionResponse{
+		OperationID: "op-1",
+		Status:      "queued",
+		Credentials: []admiral.Credential{
+			{Service: "web", Name: "ADMIN_PASSWORD", Value: "secret"},
+		},
+	}
+
+	res = provisionResponseForOutput(res, true)
+	var out bytes.Buffer
+	output.PrintJSON(&out, res)
+
+	if strings.Contains(out.String(), "secret") || strings.Contains(out.String(), "credentials") {
+		t.Fatalf("quiet JSON exposed credentials: %q", out.String())
+	}
+}

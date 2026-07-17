@@ -162,7 +162,7 @@ func init() {
 	instancesProvisionCmd.Flags().String("output", "table", "Output format: table or json")
 	instancesProvisionCmd.Flags().Bool("wait", false, "Wait until the operation reaches a terminal state")
 	instancesProvisionCmd.Flags().Duration("wait-timeout", defaultWaitTimeout, "Maximum time to wait for an operation")
-	instancesProvisionCmd.Flags().Bool("quiet", false, "Suppress credential output")
+	instancesProvisionCmd.Flags().Bool("quiet", false, "Suppress credential output in all formats")
 
 	addWaitAndForceFlags := func(cmd *cobra.Command) {
 		cmd.Flags().Bool("wait", false, "Wait until the operation reaches a terminal state")
@@ -321,7 +321,15 @@ func runInstancesProvision(cmd *cobra.Command, _ []string) error {
 	}
 
 	if outputFlag == "json" {
-		output.PrintJSON(cmd.OutOrStdout(), res)
+		if wait {
+			op, err := waitForOperation(cmd, res.OperationID)
+			if err != nil {
+				return err
+			}
+			output.PrintJSON(cmd.OutOrStdout(), op)
+			return nil
+		}
+		output.PrintJSON(cmd.OutOrStdout(), provisionResponseForOutput(res, quiet))
 		return nil
 	}
 
@@ -333,7 +341,7 @@ func runInstancesProvision(cmd *cobra.Command, _ []string) error {
 		}
 		instanceID, _ := op["instance_id"].(string)
 		if instanceID != "" {
-			printFinalAccessData(cmd, instanceID)
+			printFinalAccessData(cmd, instanceID, !quiet)
 		}
 		return nil
 	}
@@ -343,13 +351,23 @@ func runInstancesProvision(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func printFinalAccessData(cmd *cobra.Command, instanceID string) {
+func provisionResponseForOutput(res admiral.ProvisionResponse, quiet bool) admiral.ProvisionResponse {
+	if quiet {
+		res.Credentials = nil
+	}
+	return res
+}
+
+func printFinalAccessData(cmd *cobra.Command, instanceID string, showCredentials bool) {
 	instance, err := clientOrNil().GetCustomerApp(instanceID)
 	if err != nil {
 		fmt.Fprintf(cmd.ErrOrStderr(), "Warning: could not fetch instance details: %v\n", err)
 	}
 	if hostname, ok := instance["hostname"].(string); ok && hostname != "" {
 		fmt.Fprintf(cmd.OutOrStdout(), "Hostname: %s\n", hostname)
+	}
+	if !showCredentials {
+		return
 	}
 
 	credentials, err := clientOrNil().GetCredentials(instanceID)
