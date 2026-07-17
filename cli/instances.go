@@ -329,7 +329,7 @@ func runInstancesProvision(cmd *cobra.Command, _ []string) error {
 			output.PrintJSON(cmd.OutOrStdout(), op)
 			return nil
 		}
-		output.PrintJSON(cmd.OutOrStdout(), provisionResponseForOutput(res, quiet))
+		output.PrintJSON(cmd.OutOrStdout(), provisionResponseForOutput(*res, quiet))
 		return nil
 	}
 

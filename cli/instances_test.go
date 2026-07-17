@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/admiral-project/admiral/admiralctl/internal/output"
 	"github.com/admiral-project/admiral/admirald/pkg/admiral"
 	"github.com/spf13/cobra"
 )
