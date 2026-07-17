@@ -363,6 +363,11 @@ Change the password of an administrative user.
 
 The new password is read interactively from stdin.
 
+### secrets rotate
+
+Re-encrypt stored secrets with the current key through the admirald API. The
+operation is idempotent and may be safely repeated.
+
 ### storage instances
 
 List per-instance storage usage.

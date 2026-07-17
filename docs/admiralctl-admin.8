@@ -74,6 +74,16 @@ Check for instances exceeding storage limits:
 List recent platform operations:
 .IP
 .B admiralctl operations list
+.SS Secret Key Rotation
+Set the new encryption key in \fBsecrets_key\fR and retain the old key in
+\fBsecrets_key_previous\fR in \fB/etc/admirald.ini\fR. Then run:
+.IP
+.B admiralctl secrets rotate
+.IP
+The command migrates stored ciphertexts through the admirald API and is
+idempotent. It does not write directly to the PostgreSQL database. After
+verification, remove the previous key and restart admirald according to the
+sysadmin procedure.
 .SS User Management
 Create a new support operator:
 .IP

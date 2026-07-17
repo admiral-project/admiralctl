@@ -182,6 +182,12 @@ Delete a backup.
 .TP
 .B backups prune
 Prune old succeeded backups.
+.SS secrets
+Manage encrypted platform secrets through the admirald API.
+.TP
+.B secrets rotate
+Re-encrypt stored secrets with the current key. The operation is idempotent:
+already-current ciphertexts are left unchanged and can be safely processed again.
 .SS routes
 List, inspect, enable, disable, or synchronize public routes.
 .TP
@@ -229,6 +235,10 @@ Packaged default configuration.
 .TP
 .I ~/.config/admiralctl/config.yaml
 User configuration.
+.TP
+.I /etc/admirald.ini
+Control-plane configuration containing \fBsecrets_key\fR and, during rotation,
+\fBsecrets_key_previous\fR.
 .SH SEE ALSO
 .BR admiralctl-admin (8),
 .BR admirald (8)
