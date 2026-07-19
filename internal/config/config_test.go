@@ -6,6 +6,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -112,6 +113,27 @@ func TestLoadInvalidYAML(t *testing.T) {
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error when loading invalid YAML")
+	}
+}
+
+func TestGetSigningKeyPath(t *testing.T) {
+	tempHome := t.TempDir()
+	setEnv(t, "HOME", tempHome)
+	path := GetSigningKeyPath()
+	if !strings.HasSuffix(path, filepath.Join("admiralctl", "signing-key.seed")) {
+		t.Fatalf("GetSigningKeyPath returned unexpected path: %s", path)
+	}
+}
+
+func TestGetConfigPathHomeError(t *testing.T) {
+	setEnv(t, "HOME", "")
+	// Unset other potential home-related variables on different OSes if necessary
+	setEnv(t, "USERPROFILE", "")
+
+	path := GetConfigPath()
+	// Should fallback to current directory
+	if !strings.HasSuffix(path, filepath.Join(".config", "admiralctl", "config.yaml")) {
+		t.Fatalf("GetConfigPath with empty Home returned unexpected path: %s", path)
 	}
 }
 

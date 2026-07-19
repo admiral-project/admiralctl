@@ -5,8 +5,11 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -674,5 +677,107 @@ func TestUsersManagement(t *testing.T) {
 	}
 	if err := c.SetPassword("user1", "new-pass"); err != nil {
 		t.Errorf("SetPassword failed: %v", err)
+	}
+}
+
+func TestRotateSecrets(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/v1/secrets/rotate" {
+			return jsonResponse(http.StatusNotFound, nil)
+		}
+		return jsonResponse(http.StatusOK, map[string]int{"rotated_count": 5})
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+	res, err := c.RotateSecrets()
+	if err != nil {
+		t.Fatalf("RotateSecrets failed: %v", err)
+	}
+	if res["rotated_count"] != 5 {
+		t.Fatalf("unexpected rotated count: %v", res)
+	}
+}
+
+func TestWithHTTPClientOption(t *testing.T) {
+	customClient := &http.Client{}
+	c := &Client{http: &http.Client{}}
+	WithHTTPClient(customClient)(c)
+	if c.http != customClient {
+		t.Fatal("WithHTTPClient option failed to set http client")
+	}
+}
+
+func TestNewClientValidations(t *testing.T) {
+	// invalid URL scheme
+	_, err := New("http://invalid.com", "token", "")
+	if err == nil {
+		t.Fatal("expected error with http scheme")
+	}
+
+	// valid URL scheme
+	c, err := New("https://valid.com", "token", "")
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	if c.serverURL != "https://valid.com" {
+		t.Fatalf("unexpected serverURL: %s", c.serverURL)
+	}
+}
+
+type mockNetError struct {
+	error
+}
+
+func (e mockNetError) Timeout() bool   { return true }
+func (e mockNetError) Temporary() bool { return true }
+
+var _ net.Error = mockNetError{}
+
+func TestIsRetryableNetworkError(t *testing.T) {
+	if isRetryableNetworkError(nil) {
+		t.Fatal("nil error should not be retryable")
+	}
+
+	connRefused := errors.New("connection refused")
+	if !isRetryableNetworkError(connRefused) {
+		t.Fatal("connection refused should be retryable")
+	}
+
+	noSuchHost := errors.New("no such host")
+	if !isRetryableNetworkError(noSuchHost) {
+		t.Fatal("no such host should be retryable")
+	}
+
+	tlsHandshake := errors.New("TLS handshake")
+	if !isRetryableNetworkError(tlsHandshake) {
+		t.Fatal("TLS handshake should be retryable")
+	}
+
+	genericErr := errors.New("generic error")
+	if isRetryableNetworkError(genericErr) {
+		t.Fatal("generic error should not be retryable")
+	}
+
+	urlErr := &url.Error{
+		Op:  "Get",
+		URL: "https://example.com",
+		Err: errors.New("connection refused"),
+	}
+	if !isRetryableNetworkError(urlErr) {
+		t.Fatal("url error wrapping retryable error should be retryable")
+	}
+
+	netErr := mockNetError{error: errors.New("timeout")}
+	if !isRetryableNetworkError(netErr) {
+		t.Fatal("timeout net.Error should be retryable")
+	}
+
+	urlNetErr := &url.Error{
+		Op:  "Get",
+		URL: "https://example.com",
+		Err: mockNetError{error: errors.New("timeout")},
+	}
+	if !isRetryableNetworkError(urlNetErr) {
+		t.Fatal("url error wrapping timeout net.Error should be retryable")
 	}
 }

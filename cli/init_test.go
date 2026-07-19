@@ -4,6 +4,7 @@
 package cli
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,5 +36,45 @@ func TestWriteSigningKeyCreatesPrivateFile(t *testing.T) {
 		t.Fatal("expected existing signing key to be preserved")
 	} else if !strings.Contains(err.Error(), "file exists") {
 		t.Fatalf("unexpected existing-file error: %v", err)
+	}
+}
+
+func TestInitCmd(t *testing.T) {
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+
+	var out bytes.Buffer
+	initCmd.SetOut(&out)
+	_ = initCmd.Flags().Set("server", "https://admiral.test:8080")
+	_ = initCmd.Flags().Set("token", "my-secret-token")
+	_ = initCmd.Flags().Set("ca-cert", "/tmp/test-ca.pem")
+
+	err := runInit(initCmd, nil)
+	if err != nil {
+		t.Fatalf("runInit failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "Configuration initialized successfully") || !strings.Contains(got, "https://admiral.test:8080") {
+		t.Fatalf("unexpected output: %q", got)
+	}
+}
+
+func TestInitCmdGenerateSigningKey(t *testing.T) {
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+
+	var out bytes.Buffer
+	initCmd.SetOut(&out)
+	_ = initCmd.Flags().Set("generate-signing-key", "true")
+
+	err := runInit(initCmd, nil)
+	if err != nil {
+		t.Fatalf("runInit with generate-signing-key failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "private_key_file") || !strings.Contains(got, "public_key") {
+		t.Fatalf("unexpected output: %q", got)
 	}
 }
