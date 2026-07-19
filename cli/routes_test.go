@@ -76,3 +76,90 @@ func TestRoutesSyncCmd(t *testing.T) {
 		t.Fatalf("unexpected output: %q", got)
 	}
 }
+
+func TestRoutesShowCmd(t *testing.T) {
+	httpClient := &http.Client{
+		Transport: mockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			route := map[string]interface{}{"hostname": "route-show.example.com"}
+			body, _ := json.Marshal(route)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(body)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+
+	c := newMockClient(t, httpClient)
+	SetClient(c)
+
+	var out bytes.Buffer
+	routesShowCmd.SetOut(&out)
+
+	err := runRoutesShow(routesShowCmd, []string{"route-show.example.com"})
+	if err != nil {
+		t.Fatalf("runRoutesShow failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "\"hostname\": \"route-show.example.com\"") {
+		t.Fatalf("unexpected output: %q", got)
+	}
+}
+
+func TestRoutesEnableCmd(t *testing.T) {
+	httpClient := &http.Client{
+		Transport: mockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("")),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+
+	c := newMockClient(t, httpClient)
+	SetClient(c)
+
+	var out bytes.Buffer
+	routesEnableCmd.SetOut(&out)
+
+	err := runRoutesEnable(routesEnableCmd, []string{"route-enable.example.com"})
+	if err != nil {
+		t.Fatalf("runRoutesEnable failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "Route route-enable.example.com successfully") {
+		t.Fatalf("unexpected output: %q", got)
+	}
+}
+
+func TestRoutesDisableCmd(t *testing.T) {
+	httpClient := &http.Client{
+		Transport: mockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader("")),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+
+	c := newMockClient(t, httpClient)
+	SetClient(c)
+
+	var out bytes.Buffer
+	routesDisableCmd.SetOut(&out)
+	_ = routesDisableCmd.Flags().Set("force", "true")
+
+	err := runRoutesDisable(routesDisableCmd, []string{"route-disable.example.com"})
+	if err != nil {
+		t.Fatalf("runRoutesDisable failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "Route route-disable.example.com successfully") {
+		t.Fatalf("unexpected output: %q", got)
+	}
+}

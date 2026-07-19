@@ -47,3 +47,63 @@ func TestOperationsListCmd(t *testing.T) {
 		t.Fatalf("expected op-1 and inst-1 in output, got %q", got)
 	}
 }
+
+func TestOperationsShowCmd(t *testing.T) {
+	httpClient := &http.Client{
+		Transport: mockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			op := map[string]interface{}{"id": "op-show", "status": "running"}
+			body, _ := json.Marshal(op)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(body)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+
+	c := newMockClient(t, httpClient)
+	SetClient(c)
+
+	var out bytes.Buffer
+	operationsShowCmd.SetOut(&out)
+
+	err := runOperationsShow(operationsShowCmd, []string{"op-show"})
+	if err != nil {
+		t.Fatalf("runOperationsShow failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "\"id\": \"op-show\"") {
+		t.Fatalf("unexpected output: %q", got)
+	}
+}
+
+func TestOperationsRetryCmd(t *testing.T) {
+	httpClient := &http.Client{
+		Transport: mockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			res := map[string]interface{}{"operation_id": "op-retry"}
+			body, _ := json.Marshal(res)
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(bytes.NewReader(body)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	}
+
+	c := newMockClient(t, httpClient)
+	SetClient(c)
+
+	var out bytes.Buffer
+	operationsRetryCmd.SetOut(&out)
+
+	err := runOperationsRetry(operationsRetryCmd, []string{"op-to-retry"})
+	if err != nil {
+		t.Fatalf("runOperationsRetry failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "Operation op-retry retried") {
+		t.Fatalf("unexpected output: %q", got)
+	}
+}
