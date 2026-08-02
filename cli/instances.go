@@ -526,7 +526,10 @@ func waitForOperation(cmd *cobra.Command, operationID string) (map[string]interf
 		return nil, fmt.Errorf("wait for operation: %w", err)
 	}
 	status := fmt.Sprintf("%v", op["status"])
-	fmt.Fprintf(cmd.OutOrStdout(), "Operation %s finished with status: %s\n", operationID, status)
+	outputFlag, outputFlagErr := cmd.Flags().GetString("output")
+	if outputFlagErr != nil || outputFlag != "json" {
+		fmt.Fprintf(cmd.OutOrStdout(), "Operation %s finished with status: %s\n", operationID, status)
+	}
 	if status != "succeeded" {
 		output.PrintJSON(cmd.OutOrStdout(), op)
 		return op, fmt.Errorf("operation %s finished with status %s", operationID, status)
