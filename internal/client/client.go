@@ -282,19 +282,26 @@ func (c *Client) GetStatus() (map[string]interface{}, error) {
 	return res, nil
 }
 
-func (c *Client) RegisterNode(node admiral.RegisterNodeRequest) error {
+func (c *Client) RegisterNode(node admiral.RegisterNodeRequest) (admiral.RegisterNodeResponse, error) {
 	body, err := json.Marshal(node)
 	if err != nil {
-		return fmt.Errorf("marshal node request: %w", err)
+		return admiral.RegisterNodeResponse{}, fmt.Errorf("marshal node request: %w", err)
 	}
 	resp, status, err := c.request("POST", "/api/v1/nodes", body)
 	if err != nil {
-		return err
+		return admiral.RegisterNodeResponse{}, err
 	}
 	if status != http.StatusOK {
-		return formatHTTPError("register node", status, resp)
+		return admiral.RegisterNodeResponse{}, formatHTTPError("register node", status, resp)
 	}
-	return nil
+	var result admiral.RegisterNodeResponse
+	if len(bytes.TrimSpace(resp)) == 0 {
+		return result, nil
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return admiral.RegisterNodeResponse{}, fmt.Errorf("parse register node response: %w", err)
+	}
+	return result, nil
 }
 
 func (c *Client) GetNodes() ([]map[string]interface{}, error) {
@@ -329,8 +336,12 @@ func (c *Client) GetNode(id string) (map[string]interface{}, error) {
 	return node, nil
 }
 
-func (c *Client) RemoveNode(id string) error {
-	resp, status, err := c.request("DELETE", "/api/v1/nodes/"+url.PathEscape(id), nil)
+func (c *Client) RemoveNode(id string, force bool) error {
+	path := "/api/v1/nodes/" + url.PathEscape(id)
+	if force {
+		path += "?force=true"
+	}
+	resp, status, err := c.request("DELETE", path, nil)
 	if err != nil {
 		return err
 	}

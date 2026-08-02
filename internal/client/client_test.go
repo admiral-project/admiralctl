@@ -490,7 +490,7 @@ func TestNodeManagement(t *testing.T) {
 	})
 	c := &Client{serverURL: "https://example.com", token: "token", http: client}
 
-	if err := c.RegisterNode(admiral.RegisterNodeRequest{}); err != nil {
+	if _, err := c.RegisterNode(admiral.RegisterNodeRequest{}); err != nil {
 		t.Errorf("RegisterNode failed: %v", err)
 	}
 	if _, err := c.GetNodes(); err != nil {
@@ -508,7 +508,7 @@ func TestNodeManagement(t *testing.T) {
 	if _, err := c.NodeReady("node-1"); err != nil {
 		t.Errorf("NodeReady failed: %v", err)
 	}
-	if err := c.RemoveNode("node-1"); err != nil {
+	if err := c.RemoveNode("node-1", false); err != nil {
 		t.Errorf("RemoveNode failed: %v", err)
 	}
 }

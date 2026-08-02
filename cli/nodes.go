@@ -184,10 +184,17 @@ func runNodesRegister(cmd *cobra.Command, _ []string) error {
 		Token:       token,
 	}
 
-	if err := clientOrNil().RegisterNode(req); err != nil {
+	resp, err := clientOrNil().RegisterNode(req)
+	if err != nil {
 		return err
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "Node %q registered successfully!\n", id)
+	if token == "" && resp.Token != "" {
+		fmt.Fprintf(cmd.OutOrStdout(), "Generated node token (store securely; shown once): %s\n", resp.Token)
+		if resp.ClaimID != "" {
+			fmt.Fprintf(cmd.OutOrStdout(), "Claim ID: %s\n", resp.ClaimID)
+		}
+	}
 	return nil
 }
 
@@ -214,7 +221,7 @@ func runNodesRemove(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	force, _ := cmd.Flags().GetBool("force")
-	if err := clientOrNil().RemoveNode(args[0]); err != nil {
+	if err := clientOrNil().RemoveNode(args[0], force); err != nil {
 		if force {
 			return err
 		}
@@ -245,6 +252,17 @@ func runNodesReady(cmd *cobra.Command, _ []string) error {
 	result, err := clientOrNil().NodeReady(nodeID)
 	if err != nil {
 		return fmt.Errorf("node %s unreachable: %w", nodeID, err)
+	}
+	if status, ok := result["status"].(string); ok && status != "" && status != "ok" && status != "ready" && status != "healthy" {
+		return fmt.Errorf("node %s is not ready: %s", nodeID, status)
+	}
+	if ready, ok := result["ready"].(bool); ok && !ready {
+		return fmt.Errorf("node %s is not ready", nodeID)
+	}
+	if detail, ok := result["detail"].(map[string]interface{}); ok {
+		if status, ok := detail["status"].(string); ok && status != "" && status != "ok" && status != "ready" && status != "healthy" {
+			return fmt.Errorf("node %s is not ready: %s", nodeID, status)
+		}
 	}
 
 	role := fmt.Sprintf("%v", result["role"])
