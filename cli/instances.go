@@ -174,19 +174,31 @@ func init() {
 	addWaitAndForceFlags(instancesReactivateCmd)
 	addWaitAndForceFlags(instancesStartCmd)
 	addWaitAndForceFlags(instancesStopCmd)
+	addActionOutputFlag := func(cmd *cobra.Command) {
+		cmd.Flags().String("output", "table", "Output format: table or json")
+	}
+	addActionOutputFlag(instancesPauseCmd)
+	addActionOutputFlag(instancesResumeCmd)
+	addActionOutputFlag(instancesReactivateCmd)
+	addActionOutputFlag(instancesStartCmd)
+	addActionOutputFlag(instancesStopCmd)
 	instancesRestartCmd.Flags().Bool("force", false, "Skip confirmation prompt")
+	addActionOutputFlag(instancesRestartCmd)
 	instancesBackupCmd.Flags().Bool("wait", false, "Wait until the operation reaches a terminal state")
 	instancesBackupCmd.Flags().Duration("wait-timeout", defaultWaitTimeout, "Maximum time to wait for an operation")
 	instancesBackupCmd.Flags().String("service", "", "Service name for backup actions (required)")
+	addActionOutputFlag(instancesBackupCmd)
 	_ = instancesBackupCmd.MarkFlagRequired("service")
 	addWaitAndForceFlags(instancesDeprovisionCmd)
 	instancesResizeCmd.Flags().Bool("wait", false, "Wait until the operation reaches a terminal state")
 	instancesResizeCmd.Flags().Duration("wait-timeout", defaultWaitTimeout, "Maximum time to wait for an operation")
 	instancesResizeCmd.Flags().String("tier", "", "Target tier name (required)")
+	addActionOutputFlag(instancesResizeCmd)
 	_ = instancesResizeCmd.MarkFlagRequired("tier")
 	instancesMigrateCmd.Flags().Bool("wait", false, "Wait until the operation completes")
 	instancesMigrateCmd.Flags().Duration("wait-timeout", defaultWaitTimeout, "Maximum time to wait for an operation")
 	instancesMigrateCmd.Flags().String("target-node", "", "Target node ID (required)")
+	addActionOutputFlag(instancesMigrateCmd)
 	_ = instancesMigrateCmd.MarkFlagRequired("target-node")
 }
 
@@ -409,15 +421,24 @@ func printProvisionAccessData(cmd *cobra.Command, credentials []admiral.Credenti
 func runInstancesAction(action string) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		wait, _ := cmd.Flags().GetBool("wait")
+		outputFlag, _ := cmd.Flags().GetString("output")
 		opID, err := clientOrNil().TriggerAction(args[0], action)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Action %s queued successfully!\nOperation ID: %s\n", action, opID)
+		if outputFlag != "json" {
+			fmt.Fprintf(cmd.OutOrStdout(), "Action %s queued successfully!\nOperation ID: %s\n", action, opID)
+		}
 		if wait {
-			if _, err := waitForOperation(cmd, opID); err != nil {
+			op, err := waitForOperation(cmd, opID)
+			if err != nil {
 				return err
 			}
+			if outputFlag == "json" {
+				output.PrintJSON(cmd.OutOrStdout(), op)
+			}
+		} else if outputFlag == "json" {
+			output.PrintJSON(cmd.OutOrStdout(), map[string]interface{}{"operation_id": opID, "action": action, "status": "queued"})
 		}
 		return nil
 	}
@@ -453,15 +474,24 @@ func runInstancesRestart(cmd *cobra.Command, args []string) error {
 func runInstancesBackup(cmd *cobra.Command, args []string) error {
 	service, _ := cmd.Flags().GetString("service")
 	wait, _ := cmd.Flags().GetBool("wait")
+	outputFlag, _ := cmd.Flags().GetString("output")
 	opID, err := clientOrNil().TriggerActionWithService(args[0], "backup", service)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "Action backup queued successfully!\nOperation ID: %s\n", opID)
+	if outputFlag != "json" {
+		fmt.Fprintf(cmd.OutOrStdout(), "Action backup queued successfully!\nOperation ID: %s\n", opID)
+	}
 	if wait {
-		if _, err := waitForOperation(cmd, opID); err != nil {
+		op, err := waitForOperation(cmd, opID)
+		if err != nil {
 			return err
 		}
+		if outputFlag == "json" {
+			output.PrintJSON(cmd.OutOrStdout(), op)
+		}
+	} else if outputFlag == "json" {
+		output.PrintJSON(cmd.OutOrStdout(), map[string]interface{}{"operation_id": opID, "action": "backup", "status": "queued"})
 	}
 	return nil
 }
@@ -469,6 +499,7 @@ func runInstancesBackup(cmd *cobra.Command, args []string) error {
 func runInstancesResize(cmd *cobra.Command, args []string) error {
 	tier, _ := cmd.Flags().GetString("tier")
 	wait, _ := cmd.Flags().GetBool("wait")
+	outputFlag, _ := cmd.Flags().GetString("output")
 
 	if !confirmDestructive(cmd, "resize", fmt.Sprintf("instance %q to tier %q", args[0], tier)) {
 		fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
@@ -484,11 +515,19 @@ func runInstancesResize(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "Resize queued successfully!\nOperation ID: %s\n", opID)
+	if outputFlag != "json" {
+		fmt.Fprintf(cmd.OutOrStdout(), "Resize queued successfully!\nOperation ID: %s\n", opID)
+	}
 	if wait {
-		if _, err := waitForOperation(cmd, opID); err != nil {
+		op, err := waitForOperation(cmd, opID)
+		if err != nil {
 			return err
 		}
+		if outputFlag == "json" {
+			output.PrintJSON(cmd.OutOrStdout(), op)
+		}
+	} else if outputFlag == "json" {
+		output.PrintJSON(cmd.OutOrStdout(), map[string]interface{}{"operation_id": opID, "action": "resize", "status": "queued"})
 	}
 	return nil
 }
@@ -496,6 +535,7 @@ func runInstancesResize(cmd *cobra.Command, args []string) error {
 func runInstancesMigrate(cmd *cobra.Command, args []string) error {
 	targetNode, _ := cmd.Flags().GetString("target-node")
 	wait, _ := cmd.Flags().GetBool("wait")
+	outputFlag, _ := cmd.Flags().GetString("output")
 
 	if !confirmDestructive(cmd, "migrate", fmt.Sprintf("instance %q to node %q", args[0], targetNode)) {
 		fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
@@ -506,12 +546,20 @@ func runInstancesMigrate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "Migration started!\nOperation ID: %s\nInstance ID: %s\nLogical Instance ID: %s\n",
-		res.OperationID, res.InstanceID, res.LogicalInstanceID)
+	if outputFlag != "json" {
+		fmt.Fprintf(cmd.OutOrStdout(), "Migration started!\nOperation ID: %s\nInstance ID: %s\nLogical Instance ID: %s\n",
+			res.OperationID, res.InstanceID, res.LogicalInstanceID)
+	}
 	if wait {
-		if _, err := waitForOperation(cmd, res.OperationID); err != nil {
+		op, err := waitForOperation(cmd, res.OperationID)
+		if err != nil {
 			return err
 		}
+		if outputFlag == "json" {
+			output.PrintJSON(cmd.OutOrStdout(), op)
+		}
+	} else if outputFlag == "json" {
+		output.PrintJSON(cmd.OutOrStdout(), res)
 	}
 	return nil
 }
