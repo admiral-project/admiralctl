@@ -182,6 +182,8 @@ func init() {
 	addActionOutputFlag(instancesReactivateCmd)
 	addActionOutputFlag(instancesStartCmd)
 	addActionOutputFlag(instancesStopCmd)
+	instancesRestartCmd.Flags().Bool("wait", false, "Wait until the operation reaches a terminal state")
+	instancesRestartCmd.Flags().Duration("wait-timeout", defaultWaitTimeout, "Maximum time to wait for an operation")
 	instancesRestartCmd.Flags().Bool("force", false, "Skip confirmation prompt")
 	addActionOutputFlag(instancesRestartCmd)
 	instancesBackupCmd.Flags().Bool("wait", false, "Wait until the operation reaches a terminal state")
@@ -190,6 +192,7 @@ func init() {
 	addActionOutputFlag(instancesBackupCmd)
 	_ = instancesBackupCmd.MarkFlagRequired("service")
 	addWaitAndForceFlags(instancesDeprovisionCmd)
+	addActionOutputFlag(instancesDeprovisionCmd)
 	instancesResizeCmd.Flags().Bool("wait", false, "Wait until the operation reaches a terminal state")
 	instancesResizeCmd.Flags().Duration("wait-timeout", defaultWaitTimeout, "Maximum time to wait for an operation")
 	instancesResizeCmd.Flags().String("tier", "", "Target tier name (required)")
@@ -455,8 +458,14 @@ func runInstancesDestructiveAction(action string) func(*cobra.Command, []string)
 }
 
 func runInstancesRestart(cmd *cobra.Command, args []string) error {
+	wait, _ := cmd.Flags().GetBool("wait")
+	outputFlag, _ := cmd.Flags().GetString("output")
 	if !confirmDestructive(cmd, "restart", fmt.Sprintf("instance %q", args[0])) {
-		fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+		if outputFlag == "json" {
+			output.PrintJSON(cmd.OutOrStdout(), map[string]interface{}{"instance_id": args[0], "action": "restart", "status": "cancelled"})
+		} else {
+			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+		}
 		return nil
 	}
 	stopOpID, err := clientOrNil().TriggerAction(args[0], "stop")
@@ -467,7 +476,25 @@ func runInstancesRestart(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "Instance %s restarted (stop: %s / start: %s)\n", args[0], stopOpID, startOpID)
+	if wait {
+		if _, err := waitForOperation(cmd, stopOpID); err != nil {
+			return err
+		}
+		if _, err := waitForOperation(cmd, startOpID); err != nil {
+			return err
+		}
+	}
+	if outputFlag == "json" {
+		output.PrintJSON(cmd.OutOrStdout(), map[string]interface{}{
+			"instance_id":        args[0],
+			"action":             "restart",
+			"status":             map[bool]string{true: "succeeded", false: "queued"}[wait],
+			"stop_operation_id":  stopOpID,
+			"start_operation_id": startOpID,
+		})
+	} else {
+		fmt.Fprintf(cmd.OutOrStdout(), "Instance %s restarted (stop: %s / start: %s)\n", args[0], stopOpID, startOpID)
+	}
 	return nil
 }
 
