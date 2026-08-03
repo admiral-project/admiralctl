@@ -207,6 +207,9 @@ Restart an instance (stop then start).
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--force` | bool | `false` | Skip confirmation prompt |
+| `--output` | string | `table` | Output format: `table` or `json` |
+| `--wait` | bool | `false` | Wait until both operations reach a terminal state |
+| `--wait-timeout` | duration | default | Maximum time to wait |
 
 ### instances backup INSTANCE_ID
 
@@ -225,6 +228,7 @@ Deprovision (delete) an instance.
 |------|------|---------|-------------|
 | `--wait` | bool | `false` | Wait until the operation reaches a terminal state |
 | `--force` | bool | `false` | Skip confirmation prompt |
+| `--output` | string | `table` | Output format: `table` or `json` |
 
 ### instances destroy INSTANCE_ID
 
