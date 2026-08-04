@@ -147,6 +147,8 @@ var instancesMigrateCmd = &cobra.Command{
 func init() {
 	instancesListCmd.Flags().String("customer", "", "Filter by customer ID")
 	instancesListCmd.Flags().String("output", "table", "Output format: table or json")
+	instancesListCmd.Flags().Bool("pending", false, "Show only instances that need restarting")
+	instancesListCmd.Flags().String("update-type", "", "Filter by update type (security_critical, security, bugfix, improvement)")
 	instancesCredentialsCmd.Flags().String("output", "table", "Output format: table or json")
 
 	instancesInspectCmd.Flags().Bool("result", false, "Show the last inspect result instead of triggering a new inspect")
@@ -207,7 +209,9 @@ func init() {
 
 func runInstancesList(cmd *cobra.Command, _ []string) error {
 	customerID, _ := cmd.Flags().GetString("customer")
-	apps, err := clientOrNil().GetCustomerApps(customerID)
+	pending, _ := cmd.Flags().GetBool("pending")
+	updateType, _ := cmd.Flags().GetString("update-type")
+	apps, err := clientOrNil().GetCustomerAppsFiltered(customerID, pending, updateType)
 	if err != nil {
 		return err
 	}
@@ -218,7 +222,7 @@ func runInstancesList(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	headers := []string{"INSTANCE ID", "CUSTOMER ID", "APP TEMPLATE", "TIER", "NODE", "COMMERCIAL", "TECHNICAL", "STORAGE"}
+	headers := []string{"INSTANCE ID", "CUSTOMER ID", "APP TEMPLATE", "TIER", "NODE", "COMMERCIAL", "TECHNICAL", "UPDATE", "STORAGE"}
 	var rows [][]string
 	for _, a := range apps {
 		node := "-"
@@ -234,6 +238,13 @@ func runInstancesList(cmd *cobra.Command, _ []string) error {
 				storageState = "EXCEEDED"
 			}
 		}
+		updateCol := "-"
+		if fmt.Sprintf("%v", a["need_restarting"]) == "true" {
+			updateCol = fmt.Sprintf("%v", a["update_type"])
+			if updateCol == "" || updateCol == "<nil>" {
+				updateCol = "pending"
+			}
+		}
 		rows = append(rows, []string{
 			fmt.Sprintf("%v", a["id"]),
 			fmt.Sprintf("%v", a["customer_id"]),
@@ -242,6 +253,7 @@ func runInstancesList(cmd *cobra.Command, _ []string) error {
 			node,
 			fmt.Sprintf("%v", a["commercial_status"]),
 			fmt.Sprintf("%v", a["technical_status"]),
+			updateCol,
 			storageState,
 		})
 	}

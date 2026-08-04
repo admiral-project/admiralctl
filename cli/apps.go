@@ -26,6 +26,7 @@ func init() {
 	appsCmd.AddCommand(appsValidateCmd)
 	appsCmd.AddCommand(appsActivateCmd)
 	appsCmd.AddCommand(appsDeactivateCmd)
+	appsApplyCmd.Flags().String("update-type", "improvement", "Update type: security_critical, security, bugfix, improvement")
 }
 
 var appsListCmd = &cobra.Command{
@@ -115,13 +116,14 @@ func runAppsShow(cmd *cobra.Command, args []string) error {
 
 func runAppsApply(cmd *cobra.Command, _ []string) error {
 	file, _ := cmd.Flags().GetString("file")
+	updateType, _ := cmd.Flags().GetString("update-type")
 	data, payload, err := readAndValidateAppFile(cmd, file)
 	if err != nil {
 		return err
 	}
 	_ = payload
 
-	name, err := clientOrNil().ApplyApp(string(data))
+	name, err := clientOrNil().ApplyAppWithUpdateType(string(data), updateType)
 	if err != nil {
 		return err
 	}

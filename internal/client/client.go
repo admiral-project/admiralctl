@@ -124,6 +124,10 @@ func New(serverURL, token, caCertFile string, opts ...Option) (*Client, error) {
 }
 
 func (c *Client) request(method, path string, body []byte) ([]byte, int, error) {
+	return c.requestWithHeaders(method, path, body, nil)
+}
+
+func (c *Client) requestWithHeaders(method, path string, body []byte, extraHeaders map[string]string) ([]byte, int, error) {
 	u := fmt.Sprintf("%s%s", c.serverURL, path)
 	var lastErr error
 	var lastCode int
@@ -133,7 +137,7 @@ func (c *Client) request(method, path string, body []byte) ([]byte, int, error) 
 			time.Sleep(c.backoff(attempt))
 		}
 
-		respBytes, statusCode, err := c.doRequest(method, u, body)
+		respBytes, statusCode, err := c.doRequestWithHeaders(method, u, body, extraHeaders)
 		if err != nil {
 			lastErr = err
 			continue
@@ -155,6 +159,10 @@ func (c *Client) request(method, path string, body []byte) ([]byte, int, error) 
 }
 
 func (c *Client) doRequest(method, url string, body []byte) ([]byte, int, error) {
+	return c.doRequestWithHeaders(method, url, body, nil)
+}
+
+func (c *Client) doRequestWithHeaders(method, url string, body []byte, extraHeaders map[string]string) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(context.Background(), method, url, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, 0, err
@@ -162,6 +170,9 @@ func (c *Client) doRequest(method, url string, body []byte) ([]byte, int, error)
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.token)
+	for k, v := range extraHeaders {
+		req.Header.Set(k, v)
+	}
 	if c.operator != "" {
 		req.Header.Set("X-Admiral-Operator", c.operator)
 	}
@@ -397,11 +408,17 @@ func (c *Client) NodeReady(id string) (map[string]interface{}, error) {
 }
 
 func (c *Client) ApplyApp(yamlContent string) (string, error) {
+	return c.ApplyAppWithUpdateType(yamlContent, "improvement")
+}
+
+func (c *Client) ApplyAppWithUpdateType(yamlContent, updateType string) (string, error) {
 	body, err := json.Marshal(map[string]string{"yaml": yamlContent})
 	if err != nil {
 		return "", fmt.Errorf("marshal app request: %w", err)
 	}
-	resp, status, err := c.request("POST", "/api/v1/apps", body)
+	resp, status, err := c.requestWithHeaders("POST", "/api/v1/apps", body, map[string]string{
+		"X-Admiral-Update-Type": updateType,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -545,11 +562,29 @@ func (c *Client) TriggerActionWithTier(instanceID, action, tier string) (string,
 }
 
 func (c *Client) GetCustomerApps(customerID string) ([]map[string]interface{}, error) {
+	return c.GetCustomerAppsFiltered(customerID, false, "")
+}
+
+func (c *Client) GetCustomerAppsFiltered(customerID string, needRestarting bool, updateType string) ([]map[string]interface{}, error) {
 	var endpoint string
 	if customerID == "" {
 		endpoint = "/api/v1/instances"
 	} else {
 		endpoint = "/api/v1/customer-apps?customer_id=" + url.QueryEscape(customerID)
+	}
+	params := []string{}
+	if needRestarting {
+		params = append(params, "need_restarting=true")
+	}
+	if updateType != "" {
+		params = append(params, "update_type="+url.QueryEscape(updateType))
+	}
+	if len(params) > 0 {
+		sep := "&"
+		if !strings.Contains(endpoint, "?") {
+			sep = "?"
+		}
+		endpoint += sep + strings.Join(params, "&")
 	}
 	resp, status, err := c.request("GET", endpoint, nil)
 	if err != nil {
