@@ -450,7 +450,12 @@ func runInstancesAction(action string) func(*cobra.Command, []string) error {
 func runInstancesDestructiveAction(action string) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		if !confirmDestructive(cmd, action, fmt.Sprintf("instance %q", args[0])) {
-			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+			outputFlag, _ := cmd.Flags().GetString("output")
+			if outputFlag == "json" {
+				output.PrintJSON(cmd.OutOrStdout(), map[string]interface{}{"instance_id": args[0], "action": action, "status": "cancelled"})
+			} else {
+				fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+			}
 			return nil
 		}
 		return runInstancesAction(action)(cmd, args)
