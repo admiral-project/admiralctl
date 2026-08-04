@@ -534,7 +534,11 @@ func runInstancesResize(cmd *cobra.Command, args []string) error {
 	outputFlag, _ := cmd.Flags().GetString("output")
 
 	if !confirmDestructive(cmd, "resize", fmt.Sprintf("instance %q to tier %q", args[0], tier)) {
-		fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+		if outputFlag == "json" {
+			output.PrintJSON(cmd.OutOrStdout(), map[string]interface{}{"instance_id": args[0], "action": "resize", "status": "cancelled"})
+		} else {
+			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+		}
 		return nil
 	}
 
@@ -542,7 +546,11 @@ func runInstancesResize(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		var rejected *client.ProvisionRejectedError
 		if errors.As(err, &rejected) {
-			printPolicyRejected(cmd, rejected.Response)
+			if outputFlag == "json" {
+				output.PrintJSON(cmd.OutOrStdout(), rejected.Response)
+			} else {
+				printPolicyRejected(cmd, rejected.Response)
+			}
 			return fmt.Errorf("resize rejected")
 		}
 		return err
@@ -570,7 +578,11 @@ func runInstancesMigrate(cmd *cobra.Command, args []string) error {
 	outputFlag, _ := cmd.Flags().GetString("output")
 
 	if !confirmDestructive(cmd, "migrate", fmt.Sprintf("instance %q to node %q", args[0], targetNode)) {
-		fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+		if outputFlag == "json" {
+			output.PrintJSON(cmd.OutOrStdout(), map[string]interface{}{"instance_id": args[0], "action": "migrate", "status": "cancelled"})
+		} else {
+			fmt.Fprintln(cmd.OutOrStdout(), "Cancelled.")
+		}
 		return nil
 	}
 
