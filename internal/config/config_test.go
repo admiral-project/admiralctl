@@ -13,7 +13,7 @@ import (
 func TestLoadWithoutConfigDoesNotInjectDefaultToken(t *testing.T) {
 	setEnv(t, "HOME", t.TempDir())
 	setEnv(t, "ADMIRAL_SERVER_URL", "")
-	setEnv(t, "ADMIRAL_ADMIN_TOKEN", "")
+	setEnv(t, "ADMIRAL_OPERATOR_TOKEN", "")
 	setEnv(t, "ADMIRAL_TLS_CA_FILE", "")
 	setEnv(t, "ADMIRAL_OPERATOR", "")
 
@@ -32,7 +32,7 @@ func TestLoadWithoutConfigDoesNotInjectDefaultToken(t *testing.T) {
 func TestLoadAppliesEnvironmentOverrides(t *testing.T) {
 	setEnv(t, "HOME", t.TempDir())
 	setEnv(t, "ADMIRAL_SERVER_URL", "https://admiral.example.com")
-	setEnv(t, "ADMIRAL_ADMIN_TOKEN", "env-token")
+	setEnv(t, "ADMIRAL_OPERATOR_TOKEN", "env-token")
 	setEnv(t, "ADMIRAL_TLS_CA_FILE", "/etc/ssl/admiral-ca.pem")
 	setEnv(t, "ADMIRAL_OPERATOR", "jules")
 
@@ -57,7 +57,7 @@ func TestLoadAppliesEnvironmentOverrides(t *testing.T) {
 func TestLoadRejectsHTTPServerURL(t *testing.T) {
 	setEnv(t, "HOME", t.TempDir())
 	setEnv(t, "ADMIRAL_SERVER_URL", "http://localhost:8080")
-	setEnv(t, "ADMIRAL_ADMIN_TOKEN", "")
+	setEnv(t, "ADMIRAL_OPERATOR_TOKEN", "")
 	setEnv(t, "ADMIRAL_TLS_CA_FILE", "")
 
 	_, err := Load()
@@ -70,7 +70,7 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	tempHome := t.TempDir()
 	setEnv(t, "HOME", tempHome)
 	setEnv(t, "ADMIRAL_SERVER_URL", "")
-	setEnv(t, "ADMIRAL_ADMIN_TOKEN", "")
+	setEnv(t, "ADMIRAL_OPERATOR_TOKEN", "")
 	setEnv(t, "ADMIRAL_TLS_CA_FILE", "")
 	setEnv(t, "ADMIRAL_OPERATOR", "")
 
@@ -100,7 +100,7 @@ func TestLoadInvalidYAML(t *testing.T) {
 	tempHome := t.TempDir()
 	setEnv(t, "HOME", tempHome)
 	setEnv(t, "ADMIRAL_SERVER_URL", "")
-	setEnv(t, "ADMIRAL_ADMIN_TOKEN", "")
+	setEnv(t, "ADMIRAL_OPERATOR_TOKEN", "")
 
 	configPath := GetConfigPath()
 	if err := os.MkdirAll(filepath.Dir(configPath), 0750); err != nil {

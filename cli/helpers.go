@@ -33,13 +33,13 @@ func confirmDestructive(cmd *cobra.Command, action, target string) bool {
 // configured token, then prompting the user interactively.
 func resolveToken(cmd *cobra.Command, tokenFlag, cfgToken string) (string, error) {
 	if tokenFlag != "" {
-		fmt.Fprintln(cmd.ErrOrStderr(), "Warning: --token exposes the secret in the process list. Prefer ADMIRAL_ADMIN_TOKEN env var.")
+		fmt.Fprintln(cmd.ErrOrStderr(), "Warning: --token exposes the secret in the process list. Prefer ADMIRAL_OPERATOR_TOKEN env var.")
 		return tokenFlag, nil
 	}
 	if cfgToken != "" {
 		return cfgToken, nil
 	}
-	fmt.Fprint(cmd.OutOrStdout(), "Enter admin token: ")
+	fmt.Fprint(cmd.OutOrStdout(), "Enter operator token: ")
 	t, err := readPassword()
 	if err != nil {
 		return "", fmt.Errorf("read authentication token: %w", err)

@@ -331,6 +331,40 @@ func (c *Client) GetNodes() ([]map[string]interface{}, error) {
 	return list, nil
 }
 
+func (c *Client) ListOperatorTokens() ([]map[string]interface{}, error) {
+	resp, status, err := c.request("GET", "/api/admin/tokens", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusOK {
+		return nil, formatHTTPError("list tokens", status, resp)
+	}
+	var out []map[string]interface{}
+	return out, json.Unmarshal(resp, &out)
+}
+func (c *Client) CreateOperatorToken(label, scope, expiresAt string) (map[string]interface{}, error) {
+	body, _ := json.Marshal(map[string]string{"label": label, "scope": scope, "expires_at": expiresAt})
+	resp, status, err := c.request("POST", "/api/admin/tokens", body)
+	if err != nil {
+		return nil, err
+	}
+	if status != http.StatusCreated {
+		return nil, formatHTTPError("create token", status, resp)
+	}
+	var out map[string]interface{}
+	return out, json.Unmarshal(resp, &out)
+}
+func (c *Client) RevokeOperatorToken(id string) error {
+	resp, status, err := c.request("DELETE", "/api/admin/tokens/"+url.PathEscape(id), nil)
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return formatHTTPError("revoke token", status, resp)
+	}
+	return nil
+}
+
 func (c *Client) GetNode(id string) (map[string]interface{}, error) {
 	resp, status, err := c.request("GET", "/api/v1/nodes/"+url.PathEscape(id), nil)
 	if err != nil {

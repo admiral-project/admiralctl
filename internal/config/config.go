@@ -51,7 +51,13 @@ func Load() (*Config, error) {
 	if val := os.Getenv("ADMIRAL_SERVER_URL"); val != "" {
 		cfg.ServerURL = val
 	}
-	if val := os.Getenv("ADMIRAL_ADMIN_TOKEN"); val != "" {
+	if val := os.Getenv("ADMIRAL_OPERATOR_TOKEN"); val != "" {
+		cfg.Token = val
+	}
+	// Installation automation may use the internal service credential only
+	// while bootstrapping the first operator token. Normal CLI operation uses
+	// ADMIRAL_OPERATOR_TOKEN exclusively.
+	if val := os.Getenv("ADMIRAL_INTERNAL_TOKEN"); val != "" {
 		cfg.Token = val
 	}
 	if val := os.Getenv("ADMIRAL_TLS_CA_FILE"); val != "" {

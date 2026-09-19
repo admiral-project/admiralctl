@@ -21,7 +21,7 @@ var initCmd = &cobra.Command{
 	Short: "Initialize or update local CLI settings",
 	Long: `Initialize admiralctl with the control plane endpoint and authentication token.
 
-The token can be provided via --token, the ADMIRAL_ADMIN_TOKEN environment
+The token can be provided via --token, the ADMIRAL_OPERATOR_TOKEN environment
 variable, or interactively. Prefer environment variables over --token to avoid
 exposing the secret in the process list.`,
 	RunE: runInit,
@@ -30,7 +30,7 @@ exposing the secret in the process list.`,
 func init() {
 	rootCmd.AddCommand(initCmd)
 	initCmd.Flags().String("server", "", "Control plane server endpoint URL")
-	initCmd.Flags().String("token", "", "Authentication token (visible in process list; prefer ADMIRAL_ADMIN_TOKEN)")
+	initCmd.Flags().String("token", "", "Authentication token (visible in process list; prefer ADMIRAL_OPERATOR_TOKEN)")
 	initCmd.Flags().String("ca-cert", "", "CA certificate file for admirald HTTPS validation")
 	initCmd.Flags().Bool("generate-signing-key", false, "Generate Ed25519 signing key pair for task verification")
 }
@@ -71,7 +71,7 @@ func runInit(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	if resolved == "" {
-		return fmt.Errorf("authentication token is required. Use --token or export ADMIRAL_ADMIN_TOKEN")
+		return fmt.Errorf("authentication token is required. Use --token or export ADMIRAL_OPERATOR_TOKEN")
 	}
 	if err := tlsconfig.ValidateURLScheme(serverURL, "https"); err != nil {
 		return err
