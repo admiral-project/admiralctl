@@ -177,9 +177,22 @@ func TestBackupsStorageSetCmd(t *testing.T) {
 func TestBackupsStorageTestCmd(t *testing.T) {
 	httpClient := &http.Client{
 		Transport: mockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			var status int
+			var payload interface{}
+			switch {
+			case r.Method == http.MethodPost && r.URL.Path == "/api/admin/settings/backup-storage/test":
+				status = http.StatusAccepted
+				payload = map[string]interface{}{"success": true, "operation_id": "op-storage-test"}
+			case r.Method == http.MethodGet && r.URL.Path == "/api/v1/operations" && r.URL.Query().Get("id") == "op-storage-test":
+				status = http.StatusOK
+				payload = map[string]interface{}{"id": "op-storage-test", "status": "succeeded"}
+			default:
+				status = http.StatusNotFound
+			}
+			body, _ := json.Marshal(payload)
 			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(strings.NewReader("")),
+				StatusCode: status,
+				Body:       io.NopCloser(bytes.NewReader(body)),
 				Header:     make(http.Header),
 			}, nil
 		}),
@@ -197,8 +210,36 @@ func TestBackupsStorageTestCmd(t *testing.T) {
 	}
 
 	got := out.String()
-	if !strings.Contains(got, "Backup storage test passed") {
+	if !strings.Contains(got, "Operation op-storage-test finished with status: succeeded") || !strings.Contains(got, "Backup storage test passed") {
 		t.Fatalf("unexpected output: %q", got)
+	}
+}
+
+func TestBackupsStorageTestDoesNotReportFailedOperationAsPassed(t *testing.T) {
+	httpClient := &http.Client{
+		Transport: mockRoundTripper(func(r *http.Request) (*http.Response, error) {
+			var status int
+			var payload interface{}
+			if r.Method == http.MethodPost && r.URL.Path == "/api/admin/settings/backup-storage/test" {
+				status = http.StatusAccepted
+				payload = map[string]interface{}{"success": true, "operation_id": "op-storage-test"}
+			} else {
+				status = http.StatusOK
+				payload = map[string]interface{}{"id": "op-storage-test", "status": "failed"}
+			}
+			body, _ := json.Marshal(payload)
+			return &http.Response{StatusCode: status, Body: io.NopCloser(bytes.NewReader(body)), Header: make(http.Header)}, nil
+		}),
+	}
+
+	SetClient(newMockClient(t, httpClient))
+	var out bytes.Buffer
+	backupsStorageTestCmd.SetOut(&out)
+	if err := runBackupsStorageTest(backupsStorageTestCmd, nil); err == nil {
+		t.Fatal("expected failed storage test operation to return an error")
+	}
+	if strings.Contains(out.String(), "Backup storage test passed") {
+		t.Fatalf("failed storage test was reported as passed: %q", out.String())
 	}
 }
 

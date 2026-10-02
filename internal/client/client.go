@@ -985,15 +985,35 @@ func (c *Client) SetBackupStorageConfig(cfg admiral.BackupStorageConfig) error {
 	return nil
 }
 
-func (c *Client) TestBackupStorageConfig() error {
+func (c *Client) TestBackupStorageConfig() (string, error) {
 	resp, status, err := c.request("POST", "/api/admin/settings/backup-storage/test", nil)
 	if err != nil {
-		return err
+		return "", err
 	}
-	if status != http.StatusOK {
-		return formatHTTPError("test backup storage config", status, resp)
+	if status != http.StatusOK && status != http.StatusAccepted {
+		return "", formatHTTPError("test backup storage config", status, resp)
 	}
-	return nil
+	var result struct {
+		Success     bool   `json:"success"`
+		OperationID string `json:"operation_id"`
+		Message     string `json:"message"`
+	}
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return "", fmt.Errorf("decode backup storage test response: %w", err)
+	}
+	if !result.Success {
+		if message := strings.TrimSpace(result.Message); message != "" {
+			return "", fmt.Errorf("backup storage test was not accepted: %s", message)
+		}
+		return "", errors.New("backup storage test was not accepted")
+	}
+	if result.OperationID == "" {
+		if result.Message == "Local storage always active" {
+			return "", nil
+		}
+		return "", errors.New("backup storage test response has no operation_id")
+	}
+	return result.OperationID, nil
 }
 
 func (c *Client) DeleteBackup(backupID string) error {

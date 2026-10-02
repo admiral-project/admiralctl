@@ -355,12 +355,38 @@ func TestTestBackupStorageConfig(t *testing.T) {
 		if r.Method != http.MethodPost || r.URL.Path != "/api/admin/settings/backup-storage/test" {
 			return jsonResponse(http.StatusNotFound, nil)
 		}
-		return jsonResponse(http.StatusOK, nil)
+		return jsonResponse(http.StatusAccepted, map[string]interface{}{"success": true, "operation_id": "op-storage-test"})
 	})
 
 	c := &Client{serverURL: "https://example.com", token: "token", http: client}
-	if err := c.TestBackupStorageConfig(); err != nil {
+	opID, err := c.TestBackupStorageConfig()
+	if err != nil {
 		t.Fatalf("test backup storage config: %v", err)
+	}
+	if opID != "op-storage-test" {
+		t.Fatalf("unexpected storage test operation ID %q", opID)
+	}
+}
+
+func TestTestBackupStorageConfigRejectsEmptySuccess(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		return jsonResponse(http.StatusOK, map[string]interface{}{"success": true})
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+	if _, err := c.TestBackupStorageConfig(); err == nil || !strings.Contains(err.Error(), "no operation_id") {
+		t.Fatalf("expected missing operation ID error, got %v", err)
+	}
+}
+
+func TestTestBackupStorageConfigAllowsLocalStorage(t *testing.T) {
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		return jsonResponse(http.StatusOK, map[string]interface{}{"success": true, "message": "Local storage always active"})
+	})
+
+	c := &Client{serverURL: "https://example.com", token: "token", http: client}
+	if opID, err := c.TestBackupStorageConfig(); err != nil || opID != "" {
+		t.Fatalf("local storage response returned operation %q, error %v", opID, err)
 	}
 }
 

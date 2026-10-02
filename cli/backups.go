@@ -6,6 +6,7 @@ package cli
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/admiral-project/admiral/admiralctl/internal/output"
 	"github.com/admiral-project/admiral/admirald/pkg/admiral"
@@ -69,6 +70,8 @@ var backupsStorageTestCmd = &cobra.Command{
 	RunE:  runBackupsStorageTest,
 }
 
+const defaultBackupStorageTestWaitTimeout = 5 * time.Minute
+
 var backupsDeleteCmd = &cobra.Command{
 	Use:   "delete <backup_id>",
 	Short: "Delete a backup",
@@ -104,6 +107,7 @@ func init() {
 	backupsStorageSetCmd.Flags().String("prefix", "", "S3 key prefix")
 	backupsStorageSetCmd.Flags().String("access-key-env", "ADMIRAL_AWS_ACCESS_KEY_ID", "Env var name for access key")
 	backupsStorageSetCmd.Flags().String("secret-key-env", "ADMIRAL_AWS_SECRET_ACCESS_KEY", "Env var name for secret key")
+	backupsStorageTestCmd.Flags().Duration("wait-timeout", defaultBackupStorageTestWaitTimeout, "Maximum time to wait for the storage test operation")
 }
 
 func init() {
@@ -227,8 +231,14 @@ func runBackupsStorageSet(cmd *cobra.Command, _ []string) error {
 }
 
 func runBackupsStorageTest(cmd *cobra.Command, _ []string) error {
-	if err := clientOrNil().TestBackupStorageConfig(); err != nil {
+	operationID, err := clientOrNil().TestBackupStorageConfig()
+	if err != nil {
 		return err
+	}
+	if operationID != "" {
+		if _, err := waitForOperation(cmd, operationID); err != nil {
+			return err
+		}
 	}
 	fmt.Fprintln(cmd.OutOrStdout(), "Backup storage test passed.")
 	return nil
