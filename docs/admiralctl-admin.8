@@ -43,7 +43,7 @@ Activate it for customers:
 .SS Instance Lifecycle
 Provisioning a new instance for a customer:
 .IP
-.B admiralctl instances provision --app wordpress --tier pro --customer cust-123 --wait
+.B admiralctl instances provision --app wordpress --tier pro --customer cust-123 --idempotency-key initial-order-123 --wait
 .IP
 If a node needs maintenance, migrate the instance:
 .IP

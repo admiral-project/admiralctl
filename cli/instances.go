@@ -159,6 +159,8 @@ func init() {
 	_ = instancesProvisionCmd.MarkFlagRequired("tier")
 	instancesProvisionCmd.Flags().String("customer", "", "Unique Customer ID (required)")
 	_ = instancesProvisionCmd.MarkFlagRequired("customer")
+	instancesProvisionCmd.Flags().String("idempotency-key", "", "Stable key to safely retry this provision request (required)")
+	_ = instancesProvisionCmd.MarkFlagRequired("idempotency-key")
 	instancesProvisionCmd.Flags().String("node", "", "Explicit node ID to target")
 	instancesProvisionCmd.Flags().String("logical-instance-id", "", "Preserve logical instance identity for migration")
 	instancesProvisionCmd.Flags().String("output", "table", "Output format: table or json")
@@ -222,7 +224,7 @@ func runInstancesList(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	headers := []string{"INSTANCE ID", "CUSTOMER ID", "APP TEMPLATE", "TIER", "NODE", "COMMERCIAL", "TECHNICAL", "UPDATE", "STORAGE"}
+	headers := []string{"INSTANCE ID", "CUSTOMER ID", "APP TEMPLATE", "TIER", "NODE", "COMMERCIAL", "TECHNICAL", "AVAILABILITY", "UPDATE", "STORAGE"}
 	var rows [][]string
 	for _, a := range apps {
 		node := "-"
@@ -245,6 +247,10 @@ func runInstancesList(cmd *cobra.Command, _ []string) error {
 				updateCol = "pending"
 			}
 		}
+		availability := fmt.Sprintf("%v", a["effective_availability"])
+		if availability == "" || availability == "<nil>" {
+			availability = "unknown"
+		}
 		rows = append(rows, []string{
 			fmt.Sprintf("%v", a["id"]),
 			fmt.Sprintf("%v", a["customer_id"]),
@@ -253,6 +259,7 @@ func runInstancesList(cmd *cobra.Command, _ []string) error {
 			node,
 			fmt.Sprintf("%v", a["commercial_status"]),
 			fmt.Sprintf("%v", a["technical_status"]),
+			availability,
 			updateCol,
 			storageState,
 		})
@@ -321,6 +328,7 @@ func runInstancesProvision(cmd *cobra.Command, _ []string) error {
 	customer, _ := cmd.Flags().GetString("customer")
 	nodeID, _ := cmd.Flags().GetString("node")
 	logicalInstanceID, _ := cmd.Flags().GetString("logical-instance-id")
+	idempotencyKey, _ := cmd.Flags().GetString("idempotency-key")
 	outputFlag, _ := cmd.Flags().GetString("output")
 	wait, _ := cmd.Flags().GetBool("wait")
 	quiet, _ := cmd.Flags().GetBool("quiet")
@@ -331,6 +339,7 @@ func runInstancesProvision(cmd *cobra.Command, _ []string) error {
 		CustomerID:        customer,
 		NodeID:            nodeID,
 		LogicalInstanceID: logicalInstanceID,
+		IdempotencyKey:    idempotencyKey,
 	}
 
 	res, err := clientOrNil().ProvisionApp(req)

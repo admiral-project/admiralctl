@@ -518,11 +518,14 @@ func (c *Client) UpdateAppStatus(name, status string) error {
 }
 
 func (c *Client) ProvisionApp(req admiral.ProvisionRequest) (*admiral.ProvisionResponse, error) {
+	if strings.TrimSpace(req.IdempotencyKey) == "" {
+		return nil, errors.New("provision idempotency key is required")
+	}
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshal provision request: %w", err)
 	}
-	resp, status, err := c.request("POST", "/api/v1/customer-apps", body)
+	resp, status, err := c.requestWithHeaders("POST", "/api/v1/customer-apps", body, map[string]string{"Idempotency-Key": req.IdempotencyKey})
 	if err != nil {
 		return nil, err
 	}

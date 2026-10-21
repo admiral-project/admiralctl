@@ -164,6 +164,7 @@ func TestInstancesProvisionCmd(t *testing.T) {
 	_ = instancesProvisionCmd.Flags().Set("app", "erpnext")
 	_ = instancesProvisionCmd.Flags().Set("tier", "small")
 	_ = instancesProvisionCmd.Flags().Set("customer", "cust-1")
+	_ = instancesProvisionCmd.Flags().Set("idempotency-key", "test-provision-attempt-1")
 
 	err := runInstancesProvision(instancesProvisionCmd, nil)
 	if err != nil {

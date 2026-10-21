@@ -176,6 +176,7 @@ Provision a new customer application instance.
 | `--app` | string | yes | Application definition name |
 | `--tier` | string | yes | Tier name |
 | `--customer` | string | yes | Customer ID |
+| `--idempotency-key` | string | yes | Stable key to safely retry this provision request |
 | `--node` | string | no | Explicit node ID to target |
 | `--logical-instance-id` | string | no | Preserve the logical instance identity |
 | `--output` | string | no | Output format: `table` or `json` |

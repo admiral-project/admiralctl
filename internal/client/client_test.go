@@ -591,7 +591,7 @@ func TestProvisioningAndActions(t *testing.T) {
 	})
 	c := &Client{serverURL: "https://example.com", token: "token", http: client}
 
-	if _, err := c.ProvisionApp(admiral.ProvisionRequest{}); err != nil {
+	if _, err := c.ProvisionApp(admiral.ProvisionRequest{IdempotencyKey: "test-key-1"}); err != nil {
 		t.Errorf("ProvisionApp failed: %v", err)
 	}
 	if _, err := c.TriggerAction("inst-1", "pause"); err != nil {
