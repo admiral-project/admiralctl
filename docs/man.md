@@ -183,6 +183,8 @@ Provision a new customer application instance.
 | `--wait` | bool | no | Wait until the operation reaches a terminal state |
 | `--quiet` | bool | no | Suppress credential output |
 
+`--wait` waits for the operation to become `succeeded`, `failed`, or `cancelled`; it does not wait for asynchronous health reports or guarantee that every declared service is already healthy. After a successful provision, inspect the instance and wait until it reports healthy and available before routing traffic. A cold container start may briefly report unavailable health while services converge; a terminal failed operation remains a failure.
+
 ### instances migrate INSTANCE_ID
 
 Start an offline migration to another worker node.

@@ -45,6 +45,11 @@ Provisioning a new instance for a customer:
 .IP
 .B admiralctl instances provision --app wordpress --tier pro --customer cust-123 --idempotency-key initial-order-123 --wait
 .IP
+The \fB--wait\fR flag waits for the operation to reach a terminal state; it does
+not wait for asynchronous health reports or guarantee that every declared
+service is healthy. Inspect the instance and wait until it reports healthy and
+available before routing traffic.
+.IP
 If a node needs maintenance, migrate the instance:
 .IP
 .B admiralctl instances migrate --target-node worker-03 inst-abc-123 --wait

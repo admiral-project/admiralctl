@@ -121,6 +121,12 @@ Show exposed credentials and setup notices for an instance. Supports \fB--output
 Provision a new instance.
 Requires \fB--app\fR, \fB--tier\fR, \fB--customer\fR and \fB--idempotency-key\fR.
 Optional: \fB--node\fR, \fB--logical-instance-id\fR, \fB--output\fR, \fB--wait\fR, \fB--quiet\fR.
+The \fB--wait\fR flag waits for the operation to reach a terminal state; it does
+not wait for asynchronous health reports or guarantee that every declared
+service is healthy. After a successful provision, inspect the instance and wait
+until it reports healthy and available before routing traffic. A cold container
+start may briefly report unavailable health while services converge; a terminal
+failed operation remains a failure.
 .TP
 .B instances migrate --target-node \fINODE_ID\fR \fIINSTANCE_ID\fR
 Start an offline migration. Optional: \fB--wait\fR.
