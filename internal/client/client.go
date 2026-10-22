@@ -144,6 +144,9 @@ func (c *Client) requestWithHeaders(method, path string, body []byte, extraHeade
 		}
 
 		if statusCode >= 500 {
+			if parsePolicyRejectedError(statusCode, respBytes) != nil {
+				return respBytes, statusCode, nil
+			}
 			lastErr = fmt.Errorf("server error: HTTP %d", statusCode)
 			lastCode = statusCode
 			continue

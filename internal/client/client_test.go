@@ -138,6 +138,43 @@ func TestRetryOnServerError(t *testing.T) {
 	}
 }
 
+func TestProvisionPolicyRejectionIsNotRetried(t *testing.T) {
+	attempts := 0
+	client := newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
+		attempts++
+		return jsonResponse(http.StatusServiceUnavailable, admiral.ProvisioningRejectedResponse{
+			Code:        "no_node_available_for_requested_tier",
+			Message:     "No nodes available with capacity for this tier.",
+			OperationID: "op_capacity_rejected",
+		})
+	})
+
+	c := &Client{
+		serverURL:  "https://example.com",
+		token:      "token",
+		http:       client,
+		maxRetries: 3,
+		retryDelay: 1 * time.Millisecond,
+	}
+
+	_, err := c.ProvisionApp(admiral.ProvisionRequest{
+		AppDefinitionName: "test-app",
+		TierName:          "small",
+		CustomerID:        "customer-capacity",
+		IdempotencyKey:    "capacity-rejection-key",
+	})
+	var rejected *ProvisionRejectedError
+	if !errors.As(err, &rejected) {
+		t.Fatalf("expected structured capacity rejection, got %v", err)
+	}
+	if rejected.Response.OperationID != "op_capacity_rejected" {
+		t.Fatalf("structured rejection lost its operation ID: %+v", rejected.Response)
+	}
+	if attempts != 1 {
+		t.Fatalf("capacity policy rejection was retried %d times, want 1", attempts)
+	}
+}
+
 func TestDoRequestRejectsOversizedResponse(t *testing.T) {
 	c := &Client{
 		serverURL: "https://example.com",
