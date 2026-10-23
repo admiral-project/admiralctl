@@ -225,13 +225,17 @@ func runNodesRemove(cmd *cobra.Command, args []string) error {
 		if force {
 			return err
 		}
-		if strings.Contains(err.Error(), "has active instance") {
+		if isActiveInstanceRemovalError(err) {
 			cmd.PrintErrln("Tip: use --force to remove the node and all associated resources.")
 		}
 		return err
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "Node %q removed.\n", args[0])
 	return nil
+}
+
+func isActiveInstanceRemovalError(err error) bool {
+	return err != nil && strings.Contains(strings.ToLower(err.Error()), "active instance")
 }
 
 func runNodesDisable(cmd *cobra.Command, args []string) error {

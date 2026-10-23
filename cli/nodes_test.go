@@ -6,11 +6,21 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
 )
+
+func TestActiveInstanceRemovalErrorShowsForceHint(t *testing.T) {
+	if !isActiveInstanceRemovalError(errors.New(`remove node "worker-1": node has active instances (1 active instance); use --force to override`)) {
+		t.Fatal("active-instance conflict should show the force-removal hint")
+	}
+	if isActiveInstanceRemovalError(errors.New("database unavailable")) {
+		t.Fatal("unrelated removal error should not show the force-removal hint")
+	}
+}
 
 func TestNodesListCmd(t *testing.T) {
 	httpClient := &http.Client{

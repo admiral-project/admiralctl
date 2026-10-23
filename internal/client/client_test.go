@@ -218,6 +218,34 @@ func TestNoRetryOnClientError(t *testing.T) {
 	}
 }
 
+func TestRemoveNodeActiveInstanceConflictIsNotRetried(t *testing.T) {
+	attempts := 0
+	client := newTestHTTPClient(func(r *http.Request) (*http.Response, error) {
+		attempts++
+		if r.Method != http.MethodDelete || r.URL.Path != "/api/v1/nodes/worker-1" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+		return jsonResponse(http.StatusConflict, map[string]string{
+			"error": `remove node "worker-1": node has active instances (1 active instance); use --force to override`,
+		})
+	})
+	c := &Client{
+		serverURL:  "https://example.com",
+		token:      "token",
+		http:       client,
+		maxRetries: 3,
+		retryDelay: time.Millisecond,
+	}
+
+	err := c.RemoveNode("worker-1", false)
+	if err == nil || !strings.Contains(err.Error(), "active instance") {
+		t.Fatalf("expected active-instance conflict, got %v", err)
+	}
+	if attempts != 1 {
+		t.Fatalf("expected one request for a permanent conflict, got %d", attempts)
+	}
+}
+
 func TestRetryExhaustion(t *testing.T) {
 	attempts := 0
 	client := newTestHTTPClient(func(_ *http.Request) (*http.Response, error) {
