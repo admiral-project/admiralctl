@@ -191,6 +191,21 @@ Provision a new customer application instance.
 
 Start an offline migration to another worker node.
 
+Admiral returns HTTP 503 for the instance's public routes and waits 30 seconds
+before taking fresh backups. For services requiring backup, both workers must
+be able to access the configured S3-compatible backup storage. After backup
+succeeds, the source is stopped and
+the instance reports `migrating` while Admiral restores and checks the target.
+Traffic resumes on the target after a fresh healthy report. On a pre-cutover
+failure Admiral attempts to restore the source and its original routes.
+
+The 30-second wait does not prove that long-running requests have finished.
+Before migration, the operator must stop internal or direct writers and ensure
+that requests lasting longer than the wait have completed. A failed source
+recovery leaves the route in maintenance for operator intervention. If the
+Caddy cutover result is uncertain, Admiral preserves both workloads and
+requires operator reconciliation rather than discarding possible target writes.
+
 | Flag | Type | Required | Description |
 |------|------|----------|-------------|
 | `--target-node` | string | yes | Target worker node ID |

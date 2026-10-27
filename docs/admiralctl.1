@@ -130,6 +130,16 @@ failed operation remains a failure.
 .TP
 .B instances migrate --target-node \fINODE_ID\fR \fIINSTANCE_ID\fR
 Start an offline migration. Optional: \fB--wait\fR.
+Public routes return HTTP 503 and Admiral waits 30 seconds before creating
+fresh backups. Services requiring backup need S3-compatible storage reachable
+from both workers. Admiral stops the source after backup and keeps traffic in
+maintenance until the destination reports healthy. If migration fails before
+cutover, Admiral attempts to restart the source and restore its original routes.
+Before migrating, stop internal or direct writers and ensure that requests
+lasting longer than 30 seconds have completed. If source recovery fails, the
+route remains in maintenance for operator intervention.
+If the Caddy cutover result is uncertain, Admiral preserves both workloads and
+requires operator reconciliation rather than discarding possible target writes.
 .TP
 .B instances pause|resume|reactivate|start|stop \fIINSTANCE_ID\fR
 Change runtime state of an instance. Optional: \fB--wait\fR, \fB--force\fR.
