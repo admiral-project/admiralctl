@@ -109,7 +109,7 @@ func New(serverURL, token, caCertFile string, opts ...Option) (*Client, error) {
 		serverURL: serverURL,
 		token:     token,
 		http: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 70 * time.Second,
 			Transport: &http.Transport{
 				TLSClientConfig: clientTLSConfig,
 			},

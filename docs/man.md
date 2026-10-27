@@ -82,6 +82,8 @@ Deactivate a node.
 
 Remove a registered node from the platform.
 
+Removal first reconciles the remaining Worker and Portal WireGuard peers. This can take up to 60 seconds. If reconciliation fails, the node remains registered and the command can be retried.
+
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--force` | bool | `false` | Remove even with active instances |
