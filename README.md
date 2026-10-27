@@ -78,8 +78,11 @@ Configuration is stored in `~/.config/admiralctl/config.yaml` and can be initial
 
 Environment variables:
 - `ADMIRAL_SERVER_URL`
-- `ADMIRAL_ADMIN_TOKEN`
+- `ADMIRAL_OPERATOR_TOKEN`
 - `ADMIRAL_TLS_CA_FILE`
 - `ADMIRAL_OPERATOR`
 
-> **Security Note:** Avoid using the `--token` flag in shared environments, as it may expose your token in the process list. Use the `ADMIRAL_ADMIN_TOKEN` environment variable instead.
+> **Security Note:** Avoid using the `--token` flag in shared environments, as it may expose your token in the process list. Use the `ADMIRAL_OPERATOR_TOKEN` environment variable instead.
+
+`admiralctl apps validate --file app.yaml` validates a definition locally and
+does not require a configured server or authentication token.

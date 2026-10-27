@@ -11,20 +11,45 @@ import (
 
 func TestSkipClientLoad(t *testing.T) {
 	tests := []struct {
-		cmdName string
-		want    bool
+		name string
+		cmd  *cobra.Command
+		want bool
 	}{
-		{"init", true},
-		{"version", true},
-		{"status", false},
-		{"nodes", false},
+		{"init", &cobra.Command{Use: "init"}, true},
+		{"version", &cobra.Command{Use: "version"}, true},
+		{"apps validate", appsValidateCmd, true},
+		{"apps apply", appsApplyCmd, false},
+		{"status", &cobra.Command{Use: "status"}, false},
+		{"nodes", &cobra.Command{Use: "nodes"}, false},
 	}
 
 	for _, tt := range tests {
-		got := skipClientLoad(&cobra.Command{Use: tt.cmdName})
+		got := skipClientLoad(tt.cmd)
 		if got != tt.want {
-			t.Errorf("skipClientLoad(%q) = %v, want %v", tt.cmdName, got, tt.want)
+			t.Errorf("skipClientLoad(%q) = %v, want %v", tt.name, got, tt.want)
 		}
+	}
+}
+
+func TestLoadClientSkipsAppValidationWithoutConfiguration(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("ADMIRAL_OPERATOR_TOKEN", "")
+	t.Setenv("ADMIRAL_INTERNAL_TOKEN", "")
+
+	previousConfig := cfg
+	previousClient := currentClient
+	cfg = nil
+	currentClient = nil
+	t.Cleanup(func() {
+		cfg = previousConfig
+		currentClient = previousClient
+	})
+
+	if err := loadClient(appsValidateCmd, nil); err != nil {
+		t.Fatalf("loadClient(apps validate) returned error without CLI configuration: %v", err)
+	}
+	if cfg != nil || currentClient != nil {
+		t.Fatal("apps validate should not load CLI configuration or create an API client")
 	}
 }
 

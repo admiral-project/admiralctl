@@ -9,7 +9,7 @@
 | Flag | Type | Description |
 |------|------|-------------|
 | `--server` | string | Control plane server endpoint URL |
-| `--token` | string | Authentication token (prefer `ADMIRAL_ADMIN_TOKEN` env var) |
+| `--token` | string | Authentication token (prefer `ADMIRAL_OPERATOR_TOKEN` env var) |
 | `--ca-cert` | string | CA certificate file for TLS validation |
 | `--operator` | string | Operator name for audit logs |
 

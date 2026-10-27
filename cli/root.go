@@ -81,7 +81,7 @@ func loadClient(cmd *cobra.Command, _ []string) error {
 	}
 
 	if cfg.Token == "" {
-		return fmt.Errorf("no authentication token configured. Run 'admiralctl init --token <token>' or set ADMIRAL_ADMIN_TOKEN")
+		return fmt.Errorf("no authentication token configured. Run 'admiralctl init --token <token>' or set ADMIRAL_OPERATOR_TOKEN")
 	}
 
 	currentClient, err = client.New(cfg.ServerURL, cfg.Token, cfg.CACertFile, client.WithOperator(cfg.Operator))
@@ -114,7 +114,7 @@ func skipClientLoad(cmd *cobra.Command) bool {
 	case "init", "version":
 		return true
 	default:
-		return false
+		return cmd == appsValidateCmd
 	}
 }
 
